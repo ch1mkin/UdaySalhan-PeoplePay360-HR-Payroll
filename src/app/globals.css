@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pp-primary: #714b67;
+  --pp-primary-dark: #5b3b53;
+  --pp-primary-light: #f2eaf0;
+  --pp-secondary: #017e84;
+  --pp-secondary-dark: #00666b;
+  --pp-secondary-light: #e6f4f4;
+  --pp-gray: #8f8f8f;
+  --pp-background: #f7f7f7;
+  --pp-surface: #ffffff;
+  --pp-border: #e5e5e5;
+  --pp-text: #2f2f2f;
+  --pp-text-secondary: #6b6b6b;
+  --pp-success: #21b799;
+  --pp-success-light: #e6f8f4;
+  --pp-warning: #e4a900;
+  --pp-warning-light: #fdf6e3;
+  --pp-danger: #d9534f;
+  --pp-danger-light: #fbeaea;
+  --pp-row-hover: #f8f3f7;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--pp-background);
+  color: var(--pp-text);
+  font-family: var(--font-sans), Inter, system-ui, sans-serif;
+  font-size: 14px;
+}
+
+::selection {
+  background: var(--pp-primary-light);
+  color: var(--pp-text);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible {
+  outline: none;
+}

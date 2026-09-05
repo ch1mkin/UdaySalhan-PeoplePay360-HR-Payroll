@@ -1,0 +1,2 @@
+-- No demo records.
+-- Create companies, employees, contracts and payroll in the application.
