@@ -32,12 +32,21 @@ export function DataTable({
 export function DataRow({
   children,
   className,
+  onClick,
 }: {
   children: ReactNode;
   className?: string;
+  onClick?: () => void;
 }) {
   return (
-    <tr className={cn("h-14 border-t border-pp-border hover:bg-pp-hover", className)}>
+    <tr
+      className={cn(
+        "h-14 border-t border-pp-border hover:bg-pp-hover",
+        onClick ? "cursor-pointer" : "",
+        className,
+      )}
+      onClick={onClick}
+    >
       {children}
     </tr>
   );

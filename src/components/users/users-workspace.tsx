@@ -1,19 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List as ListIcon, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { createAppUser, reinviteAppUser, updateAppUser, type DirectoryUser } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field } from "@/components/ui/form-section";
 import { Modal } from "@/components/ui/modal";
-import { FilterBar } from "@/components/ui/filter-bar";
-import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
+import { DualRecordView, RecordCard } from "@/components/ui/record-views";
+import { DataCell } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { cn } from "@/lib/cn";
 import type { AppRole, UserAccountStatus } from "@/types/hr";
 import { useAppLoader } from "@/store/loader";
 
@@ -181,7 +179,10 @@ function UserActions({
 }) {
   const canReinvite = Boolean(user.work_email) && user.id !== currentUserId;
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div
+      className="flex flex-wrap items-center justify-end gap-2"
+      onClick={(event) => event.stopPropagation()}
+    >
       {canReinvite ? (
         <Button
           type="button"
@@ -213,34 +214,14 @@ export function UsersWorkspace({
   currentUserId: string;
 }) {
   const router = useRouter();
-  const [view, setView] = useState<"table" | "list">("table");
-  const [query, setQuery] = useState("");
   const [role, setRole] = useState("");
-  const [status, setStatus] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<DirectoryUser | null>(null);
   const [reinvitingId, setReinvitingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeError, setNoticeError] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return users.filter((user) => {
-      if (role && user.role !== role) {
-        return false;
-      }
-      if (status && user.account_status !== status) {
-        return false;
-      }
-      if (!needle) {
-        return true;
-      }
-      return [user.username, user.full_name, user.work_email, user.roleLabel]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle);
-    });
-  }, [users, query, role, status]);
+  const scoped = role ? users.filter((user) => user.role === role) : users;
 
   async function handleReinvite(user: DirectoryUser) {
     setNotice(null);
@@ -274,115 +255,45 @@ export function UsersWorkspace({
           {noticeError}
         </p>
       ) : null}
-      <FilterBar>
-        <label className="block min-w-[220px] flex-1">
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-pp-muted">
-            Search
-          </span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="h-10 w-full rounded-xl border border-pp-border bg-pp-bg/70 px-3 text-[13px] outline-none focus:border-pp-primary focus:bg-pp-surface"
-          />
-        </label>
-        <label className="block min-w-[160px]">
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-pp-muted">
-            Role
-          </span>
-          <select
-            value={role}
-            onChange={(event) => setRole(event.target.value)}
-            className="h-10 w-full rounded-xl border border-pp-border bg-pp-bg/70 px-3 text-[13px] outline-none focus:border-pp-primary"
-          >
-            <option value="">All</option>
-            {ROLES.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block min-w-[160px]">
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-pp-muted">
-            Status
-          </span>
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="h-10 w-full rounded-xl border border-pp-border bg-pp-bg/70 px-3 text-[13px] outline-none focus:border-pp-primary"
-          >
-            <option value="">All</option>
-            {STATUSES.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="ml-auto flex h-10 items-center gap-1 self-end rounded-xl border border-pp-border bg-pp-bg/70 p-1">
-          <button
-            type="button"
-            onClick={() => setView("table")}
-            className={cn("rounded-lg p-1.5", view === "table" ? "bg-white text-pp-primary" : "text-pp-muted")}
-            aria-label="Table view"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("list")}
-            className={cn("rounded-lg p-1.5", view === "list" ? "bg-white text-pp-primary" : "text-pp-muted")}
-            aria-label="List view"
-          >
-            <ListIcon className="h-4 w-4" />
-          </button>
-        </div>
-      </FilterBar>
-
-      {filtered.length === 0 ? (
-        <EmptyState
-          title="No users match"
-          description="Create a user to send an invite. They complete their details, then you approve access."
-          action={
-            <Button type="button" onClick={() => setCreateOpen(true)}>
-              New user
-            </Button>
-          }
-        />
-      ) : view === "table" ? (
-        <DataTable headers={["Username", "Employee name", "Work mail", "Role", "Status", ""]}>
-          {filtered.map((user) => (
-            <DataRow key={user.id}>
-              <DataCell>{user.username || "—"}</DataCell>
-              <DataCell>{user.full_name || "—"}</DataCell>
-              <DataCell>{user.work_email || "—"}</DataCell>
-              <DataCell>{user.roleLabel}</DataCell>
-              <DataCell>
-                <StatusBadge status={user.account_status} />
-              </DataCell>
-              <DataCell className="text-right">
-                <UserActions
-                  user={user}
-                  currentUserId={currentUserId}
-                  reinviting={reinvitingId === user.id}
-                  onEdit={() => setEditing(user)}
-                  onReinvite={() => void handleReinvite(user)}
-                />
-              </DataCell>
-            </DataRow>
-          ))}
-        </DataTable>
-      ) : (
-        <div className="divide-y divide-pp-border overflow-hidden rounded-2xl border border-pp-border bg-pp-surface">
-          {filtered.map((user) => (
-            <div key={user.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <div className="min-w-[140px] flex-1">
-                <p className="text-[13px] font-medium">{user.username || "—"}</p>
-                <p className="text-[12px] text-pp-muted">{user.full_name || "No employee name yet"}</p>
-              </div>
-              <p className="min-w-[180px] text-[13px] text-pp-muted">{user.work_email || "—"}</p>
-              <p className="text-[13px]">{user.roleLabel}</p>
+      <DualRecordView
+        items={scoped}
+        idOf={(item) => item.id}
+        searchText={(item) =>
+          [item.username, item.full_name, item.work_email, item.roleLabel].join(" ")
+        }
+        statusOf={(item) => item.account_status}
+        statusOptions={STATUSES}
+        tableHeaders={["Username", "Employee name", "Work mail", "Role", "Status", ""]}
+        hrefOf={(item) => `/app/users/${item.id}`}
+        extraFilters={
+          <label className="block min-w-[160px]">
+            <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-pp-muted">
+              Role
+            </span>
+            <select
+              value={role}
+              onChange={(event) => setRole(event.target.value)}
+              className="h-10 w-full rounded-xl border border-pp-border bg-pp-bg/70 px-3 text-[13px] outline-none focus:border-pp-primary"
+            >
+              <option value="">All</option>
+              {ROLES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        }
+        renderTableCells={(user) => (
+          <>
+            <DataCell>{user.username || "—"}</DataCell>
+            <DataCell>{user.full_name || "—"}</DataCell>
+            <DataCell>{user.work_email || "—"}</DataCell>
+            <DataCell>{user.roleLabel}</DataCell>
+            <DataCell>
               <StatusBadge status={user.account_status} />
+            </DataCell>
+            <DataCell className="text-right">
               <UserActions
                 user={user}
                 currentUserId={currentUserId}
@@ -390,10 +301,25 @@ export function UsersWorkspace({
                 onEdit={() => setEditing(user)}
                 onReinvite={() => void handleReinvite(user)}
               />
-            </div>
-          ))}
-        </div>
-      )}
+            </DataCell>
+          </>
+        )}
+        renderKanbanCard={(user) => (
+          <RecordCard
+            title={user.username || user.full_name || "User"}
+            subtitle={user.work_email || user.roleLabel}
+            meta={user.roleLabel}
+            badge={<StatusBadge status={user.account_status} />}
+          />
+        )}
+        emptyTitle="No users match"
+        emptyDescription="Create a user to send an invite. They complete their details, then you approve access."
+        emptyAction={
+          <Button type="button" onClick={() => setCreateOpen(true)}>
+            New user
+          </Button>
+        }
+      />
 
       <Modal
         open={createOpen}

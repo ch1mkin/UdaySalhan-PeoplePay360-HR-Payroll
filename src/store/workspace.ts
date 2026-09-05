@@ -4,6 +4,7 @@ export const WORKSPACE_TITLES: Record<string, string> = {
   "/app": "Dashboard",
   "/app/employees": "Employees",
   "/app/contracts": "Contracts",
+  "/app/schedules": "Working Schedules",
   "/app/attendance": "Attendance",
   "/app/time-off": "Time Off",
   "/app/payruns": "Payruns",

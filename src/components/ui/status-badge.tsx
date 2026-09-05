@@ -25,6 +25,9 @@ const styles: Record<string, string> = {
   early_departure: "bg-pp-warning-light text-pp-warning",
   missing_checkout: "bg-pp-bg text-pp-muted",
   on_leave: "bg-pp-secondary-light text-pp-secondary",
+  terminated: "bg-pp-danger-light text-pp-danger",
+  close_to_expire: "bg-pp-warning-light text-pp-warning",
+  archived: "bg-pp-bg text-pp-muted",
 };
 
 function labelize(value: string) {

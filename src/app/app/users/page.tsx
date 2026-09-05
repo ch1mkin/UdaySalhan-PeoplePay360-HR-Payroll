@@ -11,7 +11,7 @@ export default async function UsersPage() {
     <PageContainer>
       <PageHeader
         title="User management"
-        description="All logins, roles and account status. New users join your company. Only a platform admin can assign roles."
+        description="Kanban or list. All logins, roles and account status. Only a platform admin can assign roles."
       />
       <UsersWorkspace users={users} currentUserId={access.userId} />
     </PageContainer>

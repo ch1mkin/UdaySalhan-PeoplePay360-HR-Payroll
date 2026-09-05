@@ -85,7 +85,9 @@ export async function listEmployees(companyId: string | null) {
 
   const { data } = await supabase
     .from("employees")
-    .select("id, first_name, last_name, job_position, employment_status, work_email")
+    .select(
+      "id, first_name, last_name, job_position, employment_status, work_email, employee_number, work_location, hire_date, working_schedule_id, user_id, phone",
+    )
     .eq("company_id", companyId)
     .order("last_name");
 
@@ -164,7 +166,9 @@ export async function listContracts(companyId: string | null) {
 
   const { data } = await supabase
     .from("contracts")
-    .select("id, name, start_date, end_date, wage, status, employees(first_name, last_name)")
+    .select(
+      "id, name, start_date, end_date, wage, wage_type, status, job_position, working_schedule_id, employee_id, employees(first_name, last_name)",
+    )
     .eq("company_id", companyId)
     .order("start_date", { ascending: false });
 
@@ -218,5 +222,139 @@ export async function listCompanies() {
   }
 
   const { data } = await supabase.from("companies").select("id, name").order("name");
+  return data ?? [];
+}
+
+export type WorkingScheduleListRow = {
+  id: string;
+  name: string;
+  timezone: string | null;
+  days_per_week: number;
+  hours_per_week: number;
+  is_active: boolean;
+  calendar_type: string;
+  rules: string | null;
+  company_id: string;
+};
+
+export type WorkingScheduleDayRow = {
+  id: string;
+  day_of_week: number;
+  is_working_day: boolean;
+  start_time: string | null;
+  end_time: string | null;
+  break_minutes: number;
+  hours: number;
+};
+
+function mapScheduleRow(row: Record<string, unknown>): WorkingScheduleListRow {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    timezone: typeof row.timezone === "string" ? row.timezone : null,
+    days_per_week: Number(row.days_per_week ?? 0),
+    hours_per_week: Number(row.hours_per_week ?? 0),
+    is_active: Boolean(row.is_active),
+    calendar_type: typeof row.calendar_type === "string" ? row.calendar_type : "standard",
+    rules: typeof row.rules === "string" ? row.rules : null,
+    company_id: String(row.company_id ?? ""),
+  };
+}
+
+export async function listWorkingSchedules(companyId: string | null): Promise<WorkingScheduleListRow[]> {
+  const supabase = await createClient();
+  if (!supabase || !companyId) {
+    return [];
+  }
+
+  const full = await supabase
+    .from("working_schedules")
+    .select("id, name, timezone, days_per_week, hours_per_week, is_active, calendar_type, rules, company_id")
+    .eq("company_id", companyId)
+    .order("name");
+  if (!full.error) {
+    return (full.data ?? []).map((row) => mapScheduleRow(row as Record<string, unknown>));
+  }
+
+  const { data } = await supabase
+    .from("working_schedules")
+    .select("id, name, timezone, days_per_week, hours_per_week, is_active, company_id")
+    .eq("company_id", companyId)
+    .order("name");
+  return (data ?? []).map((row) => mapScheduleRow(row as Record<string, unknown>));
+}
+
+export async function getWorkingSchedule(id: string) {
+  const supabase = await createClient();
+  if (!supabase) {
+    return null;
+  }
+  const schedule = await supabase.from("working_schedules").select("*").eq("id", id).maybeSingle();
+  if (schedule.error || !schedule.data) {
+    return null;
+  }
+  const mapped = mapScheduleRow(schedule.data as Record<string, unknown>);
+  const { data: days } = await supabase
+    .from("schedule_days")
+    .select("id, day_of_week, is_working_day, start_time, end_time, break_minutes, hours")
+    .eq("schedule_id", id)
+    .order("day_of_week");
+  const dayRows: WorkingScheduleDayRow[] = (days ?? []).map((day) => ({
+    id: String(day.id),
+    day_of_week: Number(day.day_of_week),
+    is_working_day: Boolean(day.is_working_day),
+    start_time: day.start_time ?? null,
+    end_time: day.end_time ?? null,
+    break_minutes: Number(day.break_minutes ?? 0),
+    hours: Number(day.hours ?? 0),
+  }));
+  return { ...mapped, days: dayRows };
+}
+
+export async function getEmployeeRecord(id: string) {
+  const supabase = await createClient();
+  if (!supabase) {
+    return null;
+  }
+  const { data } = await supabase.from("employees").select("*").eq("id", id).maybeSingle();
+  return data;
+}
+
+export async function listEmployeeContracts(employeeId: string) {
+  const supabase = await createClient();
+  if (!supabase) {
+    return [];
+  }
+  const { data } = await supabase
+    .from("contracts")
+    .select("id, name, start_date, end_date, wage, wage_type, status, job_position, working_schedule_id")
+    .eq("employee_id", employeeId)
+    .order("start_date", { ascending: false });
+  return data ?? [];
+}
+
+export async function listEmployeeTimeOff(employeeId: string) {
+  const supabase = await createClient();
+  if (!supabase) {
+    return [];
+  }
+  const { data } = await supabase
+    .from("time_off_requests")
+    .select("id, start_date, end_date, duration, status, time_off_types(name)")
+    .eq("employee_id", employeeId)
+    .order("start_date", { ascending: false });
+  return data ?? [];
+}
+
+export async function listEmployeeAllocations(employeeId: string) {
+  const supabase = await createClient();
+  if (!supabase) {
+    return [];
+  }
+  const { data } = await supabase
+    .from("time_off_allocations")
+    .select("id, allocated, taken, remaining, status, valid_from, valid_until, time_off_types(name)")
+    .eq("employee_id", employeeId)
+    .order("valid_from", { ascending: false });
   return data ?? [];
 }

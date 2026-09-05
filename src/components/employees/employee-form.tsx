@@ -13,9 +13,11 @@ import { useAppLoader } from "@/store/loader";
 export function EmployeeForm({
   onDone,
   embedded = false,
+  schedules = [],
 }: {
   onDone?: () => void;
   embedded?: boolean;
+  schedules?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const start = useAppLoader((state) => state.start);
@@ -65,6 +67,35 @@ export function EmployeeForm({
           <Label htmlFor="job_position">Job Position</Label>
           <Input id="job_position" name="job_position" />
         </Field>
+        <Field>
+          <Label htmlFor="employment_status">Status</Label>
+          <select
+            id="employment_status"
+            name="employment_status"
+            defaultValue="active"
+            className="h-10 w-full rounded-pp border border-pp-border bg-white px-3 text-sm outline-none focus:border-pp-primary"
+          >
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="on_leave">On leave</option>
+            <option value="terminated">Terminated</option>
+          </select>
+        </Field>
+        <Field>
+          <Label htmlFor="working_schedule_id">Working schedule</Label>
+          <select
+            id="working_schedule_id"
+            name="working_schedule_id"
+            className="h-10 w-full rounded-pp border border-pp-border bg-white px-3 text-sm outline-none focus:border-pp-primary"
+          >
+            <option value="">None</option>
+            {schedules.map((schedule) => (
+              <option key={schedule.id} value={schedule.id}>
+                {schedule.name}
+              </option>
+            ))}
+          </select>
+        </Field>
       </FormSection>
       {error ? <p className="pb-3 text-[13px] text-pp-danger">{error}</p> : null}
       <div className="flex gap-2 py-4">
@@ -85,7 +116,7 @@ export function EmployeeForm({
   );
 }
 
-export function NewEmployeeButton() {
+export function NewEmployeeButton({ schedules = [] }: { schedules?: { id: string; name: string }[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -98,7 +129,7 @@ export function NewEmployeeButton() {
         title="New Employee"
         description="Add a person to the company directory."
       >
-        <EmployeeForm embedded onDone={() => setOpen(false)} />
+        <EmployeeForm embedded schedules={schedules} onDone={() => setOpen(false)} />
       </Modal>
     </>
   );

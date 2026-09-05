@@ -19,3 +19,11 @@ export type AttendanceStatus =
   | "absent"
   | "overtime"
   | "missing_checkout";
+
+export type CalendarType = "standard" | "flexible" | "shift";
+
+export type ContractStatus = "draft" | "open" | "close_to_expire" | "expired" | "cancelled";
+
+export type EmploymentStatus = "draft" | "active" | "on_leave" | "terminated";
+
+export type WageType = "monthly" | "hourly";

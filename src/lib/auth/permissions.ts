@@ -13,6 +13,7 @@ import {
   BarChart3,
   UserCog,
   ClipboardCheck,
+  CalendarClock,
 } from "lucide-react";
 
 export type AppModule =
@@ -21,6 +22,7 @@ export type AppModule =
   | "contracts"
   | "attendance"
   | "time_off"
+  | "schedules"
   | "payruns"
   | "payslips"
   | "structures"
@@ -55,6 +57,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { module: "employees", href: "/app/employees", label: "Employees", icon: Users },
       { module: "contracts", href: "/app/contracts", label: "Contracts", icon: FileText },
+      { module: "schedules", href: "/app/schedules", label: "Working Schedules", icon: CalendarClock },
       { module: "attendance", href: "/app/attendance", label: "Attendance", icon: Clock },
       { module: "time_off", href: "/app/time-off", label: "Time Off", icon: CalendarDays },
     ],
@@ -93,6 +96,7 @@ const ROLE_MODULES: Record<AppRole, AppModule[]> = {
     "dashboard",
     "employees",
     "contracts",
+    "schedules",
     "attendance",
     "time_off",
     "reports",
@@ -112,6 +116,7 @@ const ROLE_MODULES: Record<AppRole, AppModule[]> = {
     "payruns",
     "structures",
     "rules",
+    "schedules",
     "reports",
     "settings",
   ],
