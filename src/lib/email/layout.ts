@@ -63,7 +63,7 @@ export function brandedEmail({
               <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="vertical-align:middle;padding-right:12px;">
-                    <img src="${escapeHtml(logoUrl)}" width="40" height="40" alt="PeoplePay360" style="display:block;border-radius:8px;border:0;background:#000000;" />
+                    <img src="${escapeHtml(logoUrl)}" width="40" height="40" alt="PeoplePay360" style="display:block;border-radius:8px;border:0;background:transparent;" />
                   </td>
                   <td style="vertical-align:middle;">
                     <p style="margin:0;font-size:16px;font-weight:700;letter-spacing:-0.02em;color:#ffffff;">PeoplePay360</p>

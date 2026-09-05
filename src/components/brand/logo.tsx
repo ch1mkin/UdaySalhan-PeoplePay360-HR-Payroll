@@ -14,7 +14,7 @@ export function Logo({
       alt="PeoplePay360"
       width={size}
       height={size}
-      className={cn("rounded-pp object-contain bg-black", className)}
+      className={cn("rounded-pp object-contain bg-transparent", className)}
       priority
     />
   );
