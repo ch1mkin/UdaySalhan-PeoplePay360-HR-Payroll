@@ -18,6 +18,31 @@ export const WORKSPACE_TITLES: Record<string, string> = {
   "/app/profile": "Profile",
 };
 
+export function tabFromPathname(pathname: string) {
+  const hrefs = Object.keys(WORKSPACE_TITLES);
+  const nested = hrefs
+    .filter((href) => href !== "/app")
+    .sort((a, b) => b.length - a.length)
+    .find((href) => pathname === href || pathname.startsWith(`${href}/`));
+  if (nested) {
+    return { id: nested, href: nested, title: WORKSPACE_TITLES[nested] };
+  }
+  if (pathname === "/app") {
+    return { id: "/app", href: "/app", title: WORKSPACE_TITLES["/app"] };
+  }
+  return null;
+}
+
+export function isWorkspaceHrefActive(pathname: string, href: string) {
+  if (href === "/app") {
+    return pathname === "/app";
+  }
+  if (href === "/app/users") {
+    return pathname === "/app/users" || /^\/app\/users\/[^/]+$/.test(pathname);
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export type WindowMode = "tab" | "float" | "minimized";
 
 export type WorkspaceTab = {
@@ -126,7 +151,11 @@ function writeSnapshot(userId: string | null, tabs: WorkspaceTab[], zTop: number
     tabs: tabs.filter((tab) => !tab.closing),
     zTop,
   };
-  window.localStorage.setItem(storageKey(userId), JSON.stringify(snapshot));
+  try {
+    window.localStorage.setItem(storageKey(userId), JSON.stringify(snapshot));
+  } catch {
+    // Private mode or blocked storage should not crash tab updates.
+  }
 }
 
 export const useWorkspace = create<WorkspaceState>((set, get) => ({

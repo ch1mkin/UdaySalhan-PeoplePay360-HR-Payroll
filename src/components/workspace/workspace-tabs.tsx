@@ -2,46 +2,20 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { Minus, SquareArrowOutUpRight, X } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { WORKSPACE_TITLES, useWorkspace } from "@/store/workspace";
+import { isWorkspaceHrefActive, useWorkspace } from "@/store/workspace";
 
-function titleFor(pathname: string) {
-  const base = Object.keys(WORKSPACE_TITLES).find((href) =>
-    href === "/app" ? pathname === "/app" : pathname === href || pathname.startsWith(`${href}/`),
-  );
-  return base ? { id: base, href: base, title: WORKSPACE_TITLES[base] } : null;
-}
-
-export function WorkspaceTabs({ detached = false }: { detached?: boolean }) {
+export function WorkspaceTabs() {
   const pathname = usePathname();
   const router = useRouter();
-  const { tabs, openTab, closeTab, finishClose, popOut, minimize } = useWorkspace();
-
-  useEffect(() => {
-    if (detached) {
-      return;
-    }
-    const next = titleFor(pathname);
-    if (!next) {
-      return;
-    }
-    openTab(next);
-  }, [pathname, detached, openTab]);
-
-  if (detached) {
-    return null;
-  }
-
+  const { tabs, closeTab, finishClose, popOut, minimize } = useWorkspace();
   const strip = tabs.filter((tab) => tab.mode === "tab" || tab.closing);
 
   return (
-    <div className="flex h-9 items-end gap-1 overflow-x-auto border-b border-pp-border bg-pp-bg px-2">
+    <div className="flex h-9 shrink-0 items-end gap-1 overflow-x-auto border-b border-pp-border bg-pp-bg px-2">
       {strip.map((tab) => {
-        const active =
-          !tab.closing &&
-          (pathname === tab.href || (tab.href !== "/app" && pathname.startsWith(tab.href)));
+        const active = !tab.closing && isWorkspaceHrefActive(pathname, tab.href);
         return (
           <div
             key={tab.id}
