@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { createClient } from "@/lib/supabase/client";
 import { registerFirstAdmin } from "@/lib/actions/bootstrap";
 
@@ -63,7 +64,6 @@ export function AdminRegisterForm() {
             name="full_name"
             autoComplete="name"
             required
-            placeholder="Ada Lovelace"
             className="h-11"
           />
         </div>
@@ -74,7 +74,6 @@ export function AdminRegisterForm() {
             name="company_name"
             autoComplete="organization"
             required
-            placeholder="Your company"
             className="h-11"
           />
         </div>
@@ -87,33 +86,28 @@ export function AdminRegisterForm() {
           type="email"
           autoComplete="username"
           required
-          placeholder="you@company.com"
           className="h-11"
         />
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
           <Label htmlFor="password">Password</Label>
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="new-password"
             required
             minLength={8}
-            className="h-11"
           />
         </div>
         <div>
           <Label htmlFor="confirm_password">Confirm password</Label>
-          <Input
+          <PasswordInput
             id="confirm_password"
             name="confirm_password"
-            type="password"
             autoComplete="new-password"
             required
             minLength={8}
-            className="h-11"
           />
         </div>
       </div>

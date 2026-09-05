@@ -3,6 +3,7 @@ import { listTimeOffRequests } from "@/lib/data/hr";
 import { PageContainer, PageHeader, Panel } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar, SearchInput, SelectFilter } from "@/components/ui/filter-bar";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { personName } from "@/lib/format/names";
@@ -20,6 +21,15 @@ export default async function TimeOffPage() {
           <Button disabled>Request Time Off</Button>
         }
       />
+      <FilterBar>
+        <SearchInput label="Search" />
+        <SelectFilter name="status" label="Status">
+          <option value="requested">Requested</option>
+          <option value="to_approve">To approve</option>
+          <option value="approved">Approved</option>
+          <option value="refused">Refused</option>
+        </SelectFilter>
+      </FilterBar>
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <Panel>
           <p className="text-[12px] text-pp-muted">Available</p>

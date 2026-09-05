@@ -3,6 +3,7 @@ import { listAttendance } from "@/lib/data/hr";
 import { PageContainer, PageHeader, Panel } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar, SearchInput, SelectFilter } from "@/components/ui/filter-bar";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { personName } from "@/lib/format/names";
@@ -22,6 +23,17 @@ export default async function AttendancePage() {
           </Button>
         }
       />
+      <FilterBar>
+        <SearchInput label="Search" />
+        <SelectFilter name="status" label="Status">
+          <option value="present">Present</option>
+          <option value="late">Late</option>
+          <option value="early_departure">Early departure</option>
+          <option value="absent">Absent</option>
+          <option value="overtime">Overtime</option>
+          <option value="missing_checkout">Missing checkout</option>
+        </SelectFilter>
+      </FilterBar>
       <Panel className="mb-4">
         <p className="text-[13px] text-pp-muted">Today</p>
         <p className="mt-1 text-sm text-pp-text">No active session.</p>

@@ -2,6 +2,7 @@ import { requireModule } from "@/lib/auth/access";
 import { listContracts } from "@/lib/data/hr";
 import { PageContainer, PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar, SearchInput, SelectFilter } from "@/components/ui/filter-bar";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { MoneyDisplay } from "@/components/ui/stat-card";
@@ -14,6 +15,16 @@ export default async function ContractsPage() {
   return (
     <PageContainer>
       <PageHeader title="Contracts" description="Employment contracts and period applicability." />
+      <FilterBar>
+        <SearchInput label="Search" />
+        <SelectFilter name="status" label="Status">
+          <option value="draft">Draft</option>
+          <option value="open">Open</option>
+          <option value="close_to_expire">Close to expire</option>
+          <option value="expired">Expired</option>
+          <option value="cancelled">Cancelled</option>
+        </SelectFilter>
+      </FilterBar>
       {contracts.length === 0 ? (
         <EmptyState
           title="No contracts"

@@ -6,17 +6,24 @@ import { navGroupsForRole } from "@/lib/auth/permissions";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { WorkspaceTabs } from "@/components/workspace/workspace-tabs";
+import { FloatingWindows, WindowDock } from "@/components/workspace/floating-windows";
 import { cn } from "@/lib/cn";
 
 export function AppShell({
   access,
+  detached = false,
   children,
 }: {
   access: AccessContext;
+  detached?: boolean;
   children: ReactNode;
 }) {
   const groups = navGroupsForRole(access.role);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  if (detached) {
+    return <div className="min-h-screen bg-pp-bg text-pp-text">{children}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-pp-bg text-pp-text">
@@ -43,10 +50,12 @@ export function AppShell({
           <Sidebar groups={groups} />
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
-          <WorkspaceTabs />
+          <WorkspaceTabs detached={detached} />
           <main className="min-w-0 flex-1 px-4 py-5 md:px-6">{children}</main>
         </div>
       </div>
+      <FloatingWindows />
+      <WindowDock />
     </div>
   );
 }

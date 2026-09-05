@@ -3,11 +3,18 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export async function proxy(request: NextRequest) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  if (request.nextUrl.searchParams.get("detached") === "1") {
+    requestHeaders.set("x-pp-detached", "1");
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  if (!isSupabaseConfigured()) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  let supabaseResponse = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,7 +28,9 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
           });
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = NextResponse.next({
+            request: { headers: requestHeaders },
+          });
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options);
           });

@@ -19,9 +19,16 @@ export default async function DashboardPage() {
         description="Overview of payroll, attendance and employee costs."
       />
       <FilterBar>
-        <SelectFilter name="period" label="Period" />
+        <SelectFilter name="period" label="Period">
+          <option value="this_month">This month</option>
+          <option value="last_month">Last month</option>
+          <option value="this_year">This year</option>
+        </SelectFilter>
         <SelectFilter name="department" label="Department" />
-        <SelectFilter name="employee_type" label="Employee Type" />
+        <SelectFilter name="employee_type" label="Employee type">
+          <option value="monthly">Monthly</option>
+          <option value="hourly">Hourly</option>
+        </SelectFilter>
         <SelectFilter name="company" label="Company" />
       </FilterBar>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

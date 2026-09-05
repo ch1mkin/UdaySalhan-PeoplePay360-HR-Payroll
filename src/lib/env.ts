@@ -49,4 +49,18 @@ export function getSmtpConfig() {
   });
 }
 
+export function isSmtpConfigured() {
+  const user = process.env.SMTP_USER ?? "";
+  const password = process.env.SMTP_PASSWORD ?? "";
+  const from = process.env.SMTP_FROM_EMAIL ?? "";
+  return Boolean(user && password && from && !user.includes("yourdomain") && !from.includes("yourdomain"));
+}
+
+export function getAppUrl() {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://127.0.0.1:3000")
+  );
+}
+
 export type SmtpConfig = z.infer<typeof smtpSchema>;

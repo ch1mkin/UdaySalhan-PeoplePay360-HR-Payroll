@@ -3,6 +3,7 @@ import { listPayruns } from "@/lib/data/hr";
 import { PageContainer, PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar, SearchInput, SelectFilter } from "@/components/ui/filter-bar";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 
@@ -17,6 +18,15 @@ export default async function PayrunsPage() {
         description="Draft, compute, validate and mark paid."
         actions={<Button disabled>Create Payrun</Button>}
       />
+      <FilterBar>
+        <SearchInput label="Search" />
+        <SelectFilter name="status" label="Status">
+          <option value="draft">Draft</option>
+          <option value="computed">Computed</option>
+          <option value="validated">Validated</option>
+          <option value="paid">Paid</option>
+        </SelectFilter>
+      </FilterBar>
       {payruns.length === 0 ? (
         <EmptyState
           title="No payruns"

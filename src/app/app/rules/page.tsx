@@ -2,6 +2,7 @@ import { requireModule } from "@/lib/auth/access";
 import { listSalaryRules } from "@/lib/data/hr";
 import { PageContainer, PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar, SearchInput, SelectFilter } from "@/components/ui/filter-bar";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 
 export default async function RulesPage() {
@@ -14,6 +15,14 @@ export default async function RulesPage() {
         title="Salary Rules"
         description="Ordered calculation steps: fixed, percentage or formula."
       />
+      <FilterBar>
+        <SearchInput label="Search" />
+        <SelectFilter name="category" label="Category">
+          <option value="basic">Basic</option>
+          <option value="allowance">Allowance</option>
+          <option value="deduction">Deduction</option>
+        </SelectFilter>
+      </FilterBar>
       {rules.length === 0 ? (
         <EmptyState
           title="No salary rules"

@@ -2,6 +2,7 @@ import { requireModule } from "@/lib/auth/access";
 import { listPayslips } from "@/lib/data/hr";
 import { PageContainer, PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar, SearchInput, SelectFilter } from "@/components/ui/filter-bar";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { MoneyDisplay } from "@/components/ui/stat-card";
@@ -14,6 +15,15 @@ export default async function PayslipsPage() {
   return (
     <PageContainer>
       <PageHeader title="Payslips" description="Payslips generated from salary rules during a payrun." />
+      <FilterBar>
+        <SearchInput label="Search" />
+        <SelectFilter name="status" label="Status">
+          <option value="draft">Draft</option>
+          <option value="computed">Computed</option>
+          <option value="validated">Validated</option>
+          <option value="paid">Paid</option>
+        </SelectFilter>
+      </FilterBar>
       {payslips.length === 0 ? (
         <EmptyState
           title="No payslips found"

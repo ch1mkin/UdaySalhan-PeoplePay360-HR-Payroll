@@ -1,7 +1,7 @@
 import { requireModule } from "@/lib/auth/access";
 import { listEmployees } from "@/lib/data/hr";
 import { PageContainer, PageHeader } from "@/components/ui/page-header";
-import { Button } from "@/components/ui/button";
+import { NewEmployeeButton } from "@/components/employees/employee-form";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar, SearchInput, SelectFilter } from "@/components/ui/filter-bar";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
@@ -17,18 +17,23 @@ export default async function EmployeesPage() {
       <PageHeader
         title="Employees"
         description="Manage your organization's workforce."
-        actions={<Button href="/app/employees/new">New Employee</Button>}
+        actions={<NewEmployeeButton />}
       />
       <FilterBar>
-        <SearchInput placeholder="Search employees" />
+        <SearchInput label="Search" />
         <SelectFilter name="department" label="Department" />
-        <SelectFilter name="status" label="Status" />
+        <SelectFilter name="status" label="Status">
+          <option value="draft">Draft</option>
+          <option value="active">Active</option>
+          <option value="on_leave">On leave</option>
+          <option value="terminated">Terminated</option>
+        </SelectFilter>
       </FilterBar>
       {employees.length === 0 ? (
         <EmptyState
           title="No employees yet"
           description="Add people here. They will then appear in contracts, attendance and payroll."
-          action={<Button href="/app/employees/new">New Employee</Button>}
+          action={<NewEmployeeButton />}
         />
       ) : (
         <DataTable headers={["Employee", "Job Position", "Email", "Status"]}>
