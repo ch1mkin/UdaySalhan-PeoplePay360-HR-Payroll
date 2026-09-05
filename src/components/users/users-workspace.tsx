@@ -35,12 +35,10 @@ const STATUSES: { value: UserAccountStatus; label: string }[] = [
 
 function UserForm({
   user,
-  companies,
   currentUserId,
   onDone,
 }: {
   user?: DirectoryUser;
-  companies: { id: string; name: string }[];
   currentUserId: string;
   onDone: () => void;
 }) {
@@ -127,28 +125,10 @@ function UserForm({
           ))}
         </select>
       </Field>
-      {companies.length > 0 ? (
-        <Field>
-          <Label htmlFor="company_id">Company</Label>
-          <select
-            id="company_id"
-            name="company_id"
-            defaultValue={user?.company_id ?? ""}
-            className="h-10 rounded-pp border border-pp-border bg-white/80 px-3 text-sm text-pp-text outline-none focus:border-pp-primary"
-          >
-            <option value="">None</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-      ) : null}
       {user ? null : (
         <p className="sm:col-span-2 text-[13px] text-pp-muted">
-          An invite is sent to the work email. The person fills in their details; you approve them
-          under Approvals. They cannot assign themselves a role.
+          The user joins your company automatically. An invite is sent to the work email. They fill
+          in their details; you approve them under Approvals. They cannot assign themselves a role.
         </p>
       )}
       {error ? <p className="sm:col-span-2 text-[13px] text-pp-danger">{error}</p> : null}
@@ -163,11 +143,9 @@ function UserForm({
 
 export function UsersWorkspace({
   users,
-  companies,
   currentUserId,
 }: {
   users: DirectoryUser[];
-  companies: { id: string; name: string }[];
   currentUserId: string;
 }) {
   const [view, setView] = useState<"table" | "list">("table");
@@ -320,20 +298,19 @@ export function UsersWorkspace({
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         title="New user"
-        description="Assign the role and status, then send an invite. They cannot pick a role themselves."
+        description="Assign the role and status. The user joins your company and receives an invite."
       >
-        <UserForm companies={companies} currentUserId={currentUserId} onDone={() => setCreateOpen(false)} />
+        <UserForm currentUserId={currentUserId} onDone={() => setCreateOpen(false)} />
       </Modal>
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
         title="Edit user"
-        description="Only a platform admin can change roles."
+        description="Only a platform admin can change roles. Company stays yours."
       >
         {editing ? (
           <UserForm
             user={editing}
-            companies={companies}
             currentUserId={currentUserId}
             onDone={() => setEditing(null)}
           />

@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccessContext, isPlatformAdmin } from "@/lib/auth/access";
 import type { AppRole, UserAccountStatus } from "@/types/hr";
@@ -32,16 +31,6 @@ export type DirectoryUser = {
   roleLabel: string;
 };
 
-async function originUrl() {
-  const headerStore = await headers();
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
-  const proto = headerStore.get("x-forwarded-proto") ?? "https";
-  if (host) {
-    return `${proto}://${host}`;
-  }
-  return getAppUrl();
-}
-
 function parseRole(value: string) {
   return ASSIGNABLE.includes(value as AppRole) ? (value as AppRole) : null;
 }
@@ -50,9 +39,54 @@ function parseStatus(value: string) {
   return STATUSES.includes(value as UserAccountStatus) ? (value as UserAccountStatus) : null;
 }
 
+async function generateSetupUrl(admin: ReturnType<typeof createAdminClient>, email: string) {
+  const appUrl = getAppUrl();
+  const redirectTo = `${appUrl}/auth/set-password`;
+  const attempts: Array<{
+    type: "recovery" | "magiclink";
+    options?: { redirectTo: string };
+  }> = [
+    { type: "recovery", options: { redirectTo } },
+    { type: "recovery" },
+    { type: "magiclink", options: { redirectTo } },
+  ];
+
+  let lastError: string | null = null;
+  for (const attempt of attempts) {
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: attempt.type,
+      email,
+      options: attempt.options,
+    });
+    if (error) {
+      lastError = error.message;
+      continue;
+    }
+
+    const hashedToken = data.properties?.hashed_token;
+    if (hashedToken) {
+      const otpType = attempt.type === "magiclink" ? "magiclink" : "recovery";
+      return `${redirectTo}?token_hash=${encodeURIComponent(hashedToken)}&type=${otpType}`;
+    }
+
+    const actionLink = data.properties?.action_link;
+    if (actionLink) {
+      try {
+        const url = new URL(actionLink);
+        url.searchParams.set("redirect_to", redirectTo);
+        return url.toString();
+      } catch {
+        return actionLink;
+      }
+    }
+  }
+
+  throw new Error(lastError ?? "The invite link could not be generated.");
+}
+
 async function sendInvite(email: string, fullName: string, role: AppRole, companyName: string) {
   if (!isSmtpConfigured()) {
-    return "User saved, but email is not configured. Add Hostinger SMTP settings and try again.";
+    return "User saved, but email is not configured. Add Hostinger SMTP settings on Vercel and try again.";
   }
 
   let admin;
@@ -62,16 +96,12 @@ async function sendInvite(email: string, fullName: string, role: AppRole, compan
     return "Add SUPABASE_SERVICE_ROLE_KEY to send invites.";
   }
 
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email,
-  });
-
-  if (linkError || !linkData.properties?.hashed_token) {
-    return linkError?.message ?? "The invite link could not be generated.";
+  let setupUrl: string;
+  try {
+    setupUrl = await generateSetupUrl(admin, email);
+  } catch (error) {
+    return error instanceof Error ? error.message : "The invite link could not be generated.";
   }
-
-  const setupUrl = `${await originUrl()}/auth/set-password?token_hash=${encodeURIComponent(linkData.properties.hashed_token)}&type=recovery`;
 
   try {
     await sendMail({
@@ -162,7 +192,9 @@ export async function createAppUser(formData: FormData) {
     return { error: error?.message ?? "Could not create the login." };
   }
 
-  const companyId = String(formData.get("company_id") ?? access.companyId ?? "") || null;
+  if (!access.companyId) {
+    return { error: "Create a company in Settings first. New users join your company automatically." };
+  }
 
   const { error: profileError } = await admin
     .from("profiles")
@@ -171,7 +203,7 @@ export async function createAppUser(formData: FormData) {
       username,
       full_name: fullName || null,
       work_email: email,
-      company_id: companyId,
+      company_id: access.companyId,
       account_status: status === "active" ? "invited" : status,
     })
     .eq("id", data.user.id);
@@ -221,13 +253,14 @@ export async function updateAppUser(formData: FormData) {
     return { error: "Add SUPABASE_SERVICE_ROLE_KEY to edit users." };
   }
 
-  const companyId = String(formData.get("company_id") ?? "") || null;
   const patch: Record<string, unknown> = {
     username,
     full_name: fullName || null,
-    company_id: companyId,
     account_status: status,
   };
+  if (access.companyId) {
+    patch.company_id = access.companyId;
+  }
   if (id !== access.userId) {
     patch.role = role;
   }

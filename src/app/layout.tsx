@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { NavigationLoader } from "@/components/layout/navigation-loader";
+import { PRODUCTION_APP_URL } from "@/lib/env";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -10,6 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(PRODUCTION_APP_URL),
   title: "PeoplePay360",
   description: "Personnel and payroll.",
   icons: {
