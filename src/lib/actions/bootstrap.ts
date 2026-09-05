@@ -111,6 +111,9 @@ export async function registerFirstAdmin(formData: FormData) {
       role: "admin",
       full_name,
       company_id: company.id,
+      username: full_name.toLowerCase().replace(/\s+/g, ".") || "admin",
+      work_email: email,
+      account_status: "active",
     })
     .eq("id", data.user.id);
 

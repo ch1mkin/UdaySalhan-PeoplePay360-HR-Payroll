@@ -63,6 +63,7 @@ export function ProfileForm({
         <div>
           <Label>Role</Label>
           <Input defaultValue={roleLabel(role)} readOnly className="bg-pp-bg text-pp-muted" />
+          <p className="mt-1 text-[12px] text-pp-muted">Assigned by a platform admin. You cannot change it.</p>
         </div>
         <div>
           <Label>Company</Label>

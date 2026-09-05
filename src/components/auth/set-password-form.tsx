@@ -87,7 +87,7 @@ export function SetPasswordForm() {
     setPending(false);
     setSuccess(true);
     window.setTimeout(() => {
-      router.push("/app");
+      router.push("/auth/complete-profile");
       router.refresh();
     }, 1100);
   }
@@ -98,12 +98,12 @@ export function SetPasswordForm() {
         <BrandMark />
         <h1 className="mt-8 text-[26px] font-semibold tracking-tight">Set your password</h1>
         <p className="mt-1 mb-6 text-[13px] text-pp-muted">
-          Choose a password, then you can sign in with your assigned role.
+          Choose a password, then add your employee details. A platform admin assigns your role.
         </p>
         {success ? (
           <div className="py-4 text-center">
             <p className="text-[16px] font-semibold text-pp-success">Password saved</p>
-            <p className="mt-1 text-[13px] text-pp-muted">Opening your workspace…</p>
+            <p className="mt-1 text-[13px] text-pp-muted">Continue to your details…</p>
           </div>
         ) : !ready ? (
           <p className="text-[13px] text-pp-danger">{error ?? "Checking your invite…"}</p>

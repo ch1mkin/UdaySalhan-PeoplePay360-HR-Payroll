@@ -1,26 +1,36 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import type { AppRole } from "@/types/hr";
+import type { AppRole, UserAccountStatus } from "@/types/hr";
 import { canAccessModule, type AppModule } from "@/lib/auth/permissions";
 
 export type AccessContext = {
+  userId: string;
   role: AppRole;
   fullName: string;
+  username: string;
   companyName: string;
   companyId: string | null;
   email: string;
+  accountStatus: UserAccountStatus;
   isPreview: boolean;
 };
 
 const LOCAL_SHELL: AccessContext = {
-  role: "company_admin",
+  userId: "preview",
+  role: "admin",
   fullName: "",
+  username: "",
   companyName: "PeoplePay360",
   companyId: null,
   email: "",
+  accountStatus: "active",
   isPreview: true,
 };
+
+export function isPlatformAdmin(role: AppRole) {
+  return role === "admin";
+}
 
 export async function getAccessContext(): Promise<AccessContext> {
   if (!isSupabaseConfigured()) {
@@ -42,7 +52,7 @@ export async function getAccessContext(): Promise<AccessContext> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, full_name, company_id")
+    .select("role, full_name, company_id, username, account_status, work_email")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -59,11 +69,14 @@ export async function getAccessContext(): Promise<AccessContext> {
   }
 
   return {
+    userId: user.id,
     role: (profile?.role as AppRole | undefined) ?? "employee",
     fullName: profile?.full_name ?? "",
+    username: profile?.username ?? "",
     companyName,
     companyId: profile?.company_id ?? null,
-    email: user.email ?? "",
+    email: profile?.work_email ?? user.email ?? "",
+    accountStatus: (profile?.account_status as UserAccountStatus | undefined) ?? "active",
     isPreview: false,
   };
 }
@@ -74,4 +87,14 @@ export async function requireModule(module: AppModule) {
     redirect("/app");
   }
   return access;
+}
+
+export function accountGatePath(access: AccessContext) {
+  if (access.isPreview || isPlatformAdmin(access.role) || access.accountStatus === "active") {
+    return null;
+  }
+  if (access.accountStatus === "invited") {
+    return "/auth/complete-profile";
+  }
+  return "/auth/waiting";
 }

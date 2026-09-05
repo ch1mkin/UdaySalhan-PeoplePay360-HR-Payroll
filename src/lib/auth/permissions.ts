@@ -11,6 +11,8 @@ import {
   Users,
   Wallet,
   BarChart3,
+  UserCog,
+  ClipboardCheck,
 } from "lucide-react";
 
 export type AppModule =
@@ -24,7 +26,9 @@ export type AppModule =
   | "structures"
   | "rules"
   | "reports"
-  | "settings";
+  | "settings"
+  | "users"
+  | "approvals";
 
 export type NavItem = {
   module: AppModule;
@@ -70,6 +74,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: null,
     items: [
       { module: "reports", href: "/app/reports", label: "Reports", icon: BarChart3 },
+      { module: "users", href: "/app/users", label: "Users", icon: UserCog },
+      { module: "approvals", href: "/app/users/approvals", label: "Approvals", icon: ClipboardCheck },
       { module: "settings", href: "/app/settings", label: "Settings", icon: Settings },
     ],
   },
@@ -78,6 +84,8 @@ export const NAV_GROUPS: NavGroup[] = [
 const ALL_MODULES: AppModule[] = NAV_GROUPS.flatMap((group) =>
   group.items.map((item) => item.module),
 );
+
+const ADMIN_ONLY: AppModule[] = ["users", "approvals"];
 
 const ROLE_MODULES: Record<AppRole, AppModule[]> = {
   employee: ["dashboard", "attendance", "time_off", "payslips"],
@@ -107,7 +115,7 @@ const ROLE_MODULES: Record<AppRole, AppModule[]> = {
     "reports",
     "settings",
   ],
-  company_admin: ALL_MODULES,
+  company_admin: ALL_MODULES.filter((module) => !ADMIN_ONLY.includes(module)),
   admin: ALL_MODULES,
 };
 

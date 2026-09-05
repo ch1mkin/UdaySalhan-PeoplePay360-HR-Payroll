@@ -12,6 +12,8 @@ export const WORKSPACE_TITLES: Record<string, string> = {
   "/app/rules": "Salary Rules",
   "/app/reports": "Reports",
   "/app/settings": "Settings",
+  "/app/users/approvals": "Approvals",
+  "/app/users": "Users",
   "/app/profile": "Profile",
 };
 

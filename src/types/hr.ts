@@ -6,6 +6,8 @@ export type AppRole =
   | "company_admin"
   | "admin";
 
+export type UserAccountStatus = "invited" | "pending_approval" | "active" | "suspended";
+
 export type PayrunStatus = "draft" | "computed" | "validated" | "paid" | "cancelled";
 
 export type SalaryCalcMethod = "fixed" | "percentage" | "formula";

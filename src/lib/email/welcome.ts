@@ -19,10 +19,10 @@ export function welcomeInviteEmail({
     eyebrow: "Welcome",
     title: "You have been added to PeoplePay360",
     paragraphs: [
-      `Hi ${escapeHtml(greeting)}, you have been invited to <strong style="color:#2F2F2F;">${escapeHtml(companyName)}</strong> as <strong style="color:#2F2F2F;">${escapeHtml(roleName)}</strong>.`,
-      "Use the button below to choose your password. After that, sign in with your work email and that password to open your workspace.",
+      `Hi ${escapeHtml(greeting)}, you have been invited to <strong style="color:#2F2F2F;">${escapeHtml(companyName)}</strong>. Your workspace role will be <strong style="color:#2F2F2F;">${escapeHtml(roleName)}</strong> after an admin approves your details.`,
+      "Set your password, then fill in your employee details. You cannot assign a role yourself. A platform admin reviews and approves your access.",
     ],
-    cta: { label: "Set your password", href: setupUrl },
+    cta: { label: "Set password and add your details", href: setupUrl },
   });
 
   return {

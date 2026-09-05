@@ -16,6 +16,10 @@ export async function updateMyProfile(formData: FormData) {
     return { error: "Enter your name." };
   }
 
+  if (formData.has("role") || formData.has("account_status")) {
+    return { error: "You cannot assign a role or change account status." };
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

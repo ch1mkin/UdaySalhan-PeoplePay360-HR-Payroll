@@ -46,7 +46,7 @@ export function Modal({
       <button
         type="button"
         aria-label="Close dialog"
-        className="absolute inset-0 bg-[#2f2f2f]/35 backdrop-blur-[6px]"
+        className="absolute inset-0 bg-white/50 backdrop-blur-[8px]"
         onClick={onClose}
       />
       <div
@@ -54,7 +54,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby="pp-modal-title"
         className={cn(
-          "relative max-h-[90vh] w-full max-w-xl overflow-auto rounded-2xl border border-white/70 bg-white/88 p-6 shadow-[0_24px_80px_rgba(47,47,47,0.18)] backdrop-blur-xl",
+          "relative max-h-[90vh] w-full max-w-xl overflow-auto rounded-2xl border border-white/80 bg-white/70 p-6 shadow-[0_24px_80px_rgba(47,47,47,0.08)] backdrop-blur-xl",
           className,
         )}
       >

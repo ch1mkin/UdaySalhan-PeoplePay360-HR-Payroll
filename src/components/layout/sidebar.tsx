@@ -8,7 +8,13 @@ import { cn } from "@/lib/cn";
 import type { NavGroup } from "@/lib/auth/permissions";
 
 function isActive(pathname: string, href: string) {
-  return href === "/app" ? pathname === "/app" : pathname === href || pathname.startsWith(`${href}/`);
+  if (href === "/app") {
+    return pathname === "/app";
+  }
+  if (href === "/app/users") {
+    return pathname === "/app/users";
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function Group({ group }: { group: NavGroup }) {

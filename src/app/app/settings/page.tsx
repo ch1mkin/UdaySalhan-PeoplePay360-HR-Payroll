@@ -1,23 +1,18 @@
-import { requireModule } from "@/lib/auth/access";
-import { listCompanies } from "@/lib/data/hr";
-import { listManagedUsers } from "@/lib/actions/users";
+import { requireModule, isPlatformAdmin } from "@/lib/auth/access";
 import { getSmtpPublicStatus } from "@/lib/email/smtp";
 import { PageContainer, PageHeader, Panel } from "@/components/ui/page-header";
 import { CompanyForm } from "@/components/settings/company-form";
-import { UserDialogs } from "@/components/settings/create-user-form";
 import { SmtpTestForm } from "@/components/settings/smtp-test-form";
+import { Button } from "@/components/ui/button";
 
 export default async function SettingsPage() {
   const access = await requireModule("settings");
-  const canManageUsers = access.role === "admin" || access.role === "company_admin";
-  const [companies, users] = canManageUsers
-    ? await Promise.all([listCompanies(), listManagedUsers()])
-    : [[], []];
-  const smtp = canManageUsers ? getSmtpPublicStatus() : null;
+  const smtp = getSmtpPublicStatus();
+  const admin = isPlatformAdmin(access.role);
 
   return (
     <PageContainer className="max-w-3xl">
-      <PageHeader title="Settings" description="Company, users and workspace roles." />
+      <PageHeader title="Settings" description="Company and mail delivery." />
       <Panel>
         <h2 className="mb-1 text-[15px] font-semibold">Company</h2>
         <p className="mb-4 text-[13px] text-pp-muted">
@@ -28,35 +23,30 @@ export default async function SettingsPage() {
         {access.companyId ? null : <CompanyForm />}
       </Panel>
 
-      {canManageUsers ? (
+      {admin ? (
         <Panel className="mt-4">
-          <h2 className="mb-1 text-[15px] font-semibold">Users and roles</h2>
+          <h2 className="mb-1 text-[15px] font-semibold">Users</h2>
           <p className="mb-4 text-[13px] text-pp-muted">
-            Accounts are created here. People cannot self-register.
+            Create logins, assign roles and approve details from User management. People cannot pick
+            their own role.
           </p>
-          <UserDialogs
-            companies={companies}
-            canAssignPlatformAdmin={access.role === "admin"}
-            users={users}
-          />
+          <Button href="/app/users">Open user management</Button>
         </Panel>
       ) : null}
 
-      {canManageUsers && smtp ? (
-        <Panel className="mt-4">
-          <h2 className="mb-1 text-[15px] font-semibold">Mail delivery</h2>
-          <p className="mb-4 text-[13px] text-pp-muted">
-            Send a branded test message through Hostinger SMTP before inviting users.
-          </p>
-          <SmtpTestForm
-            defaultTo={access.email}
-            configured={smtp.configured}
-            host={smtp.host}
-            port={smtp.port}
-            from={smtp.from}
-          />
-        </Panel>
-      ) : null}
+      <Panel className="mt-4">
+        <h2 className="mb-1 text-[15px] font-semibold">Mail delivery</h2>
+        <p className="mb-4 text-[13px] text-pp-muted">
+          Send a branded test message through Hostinger SMTP before inviting users.
+        </p>
+        <SmtpTestForm
+          defaultTo={access.email}
+          configured={smtp.configured}
+          host={smtp.host}
+          port={smtp.port}
+          from={smtp.from}
+        />
+      </Panel>
     </PageContainer>
   );
 }

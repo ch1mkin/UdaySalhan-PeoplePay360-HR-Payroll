@@ -3,9 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAccessContext } from "@/lib/auth/access";
-import { createClient } from "@/lib/supabase/server";
-import type { AppRole } from "@/types/hr";
+import { getAccessContext, isPlatformAdmin } from "@/lib/auth/access";
+import type { AppRole, UserAccountStatus } from "@/types/hr";
 import { roleLabel } from "@/lib/auth/permissions";
 import { sendMail } from "@/lib/email/smtp";
 import { welcomeInviteEmail } from "@/lib/email/welcome";
@@ -20,9 +19,18 @@ const ASSIGNABLE: AppRole[] = [
   "admin",
 ];
 
-function canManageUsers(role: AppRole) {
-  return role === "admin" || role === "company_admin";
-}
+const STATUSES: UserAccountStatus[] = ["invited", "pending_approval", "active", "suspended"];
+
+export type DirectoryUser = {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  work_email: string | null;
+  role: AppRole;
+  account_status: UserAccountStatus;
+  company_id: string | null;
+  roleLabel: string;
+};
 
 async function originUrl() {
   const headerStore = await headers();
@@ -34,24 +42,102 @@ async function originUrl() {
   return getAppUrl();
 }
 
+function parseRole(value: string) {
+  return ASSIGNABLE.includes(value as AppRole) ? (value as AppRole) : null;
+}
+
+function parseStatus(value: string) {
+  return STATUSES.includes(value as UserAccountStatus) ? (value as UserAccountStatus) : null;
+}
+
+async function sendInvite(email: string, fullName: string, role: AppRole, companyName: string) {
+  if (!isSmtpConfigured()) {
+    return "User saved, but email is not configured. Add Hostinger SMTP settings and try again.";
+  }
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return "Add SUPABASE_SERVICE_ROLE_KEY to send invites.";
+  }
+
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email,
+  });
+
+  if (linkError || !linkData.properties?.hashed_token) {
+    return linkError?.message ?? "The invite link could not be generated.";
+  }
+
+  const setupUrl = `${await originUrl()}/auth/set-password?token_hash=${encodeURIComponent(linkData.properties.hashed_token)}&type=recovery`;
+
+  try {
+    await sendMail({
+      to: email,
+      ...welcomeInviteEmail({
+        fullName: fullName || email,
+        role,
+        setupUrl,
+        companyName,
+      }),
+    });
+  } catch (mailError) {
+    return mailError instanceof Error
+      ? `User saved, but the invite email failed: ${mailError.message}`
+      : "User saved, but the invite email failed.";
+  }
+
+  return null;
+}
+
+export async function listDirectoryUsers() {
+  const access = await getAccessContext();
+  if (!isPlatformAdmin(access.role)) {
+    return [];
+  }
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return [];
+  }
+
+  const { data } = await admin
+    .from("profiles")
+    .select("id, username, full_name, work_email, role, account_status, company_id")
+    .order("username");
+
+  return (data ?? []).map((row) => ({
+    ...row,
+    role: (row.role as AppRole) ?? "employee",
+    account_status: (row.account_status as UserAccountStatus) ?? "invited",
+    roleLabel: roleLabel((row.role as AppRole) ?? "employee"),
+  })) satisfies DirectoryUser[];
+}
+
 export async function createAppUser(formData: FormData) {
   const access = await getAccessContext();
-  if (!canManageUsers(access.role)) {
-    return { error: "Only an admin can create users." };
+  if (!isPlatformAdmin(access.role)) {
+    return { error: "Only a platform admin can create users and assign roles." };
   }
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const username = String(formData.get("username") ?? "").trim();
   const fullName = String(formData.get("full_name") ?? "").trim();
-  const role = String(formData.get("role") ?? "employee") as AppRole;
+  const role = parseRole(String(formData.get("role") ?? "employee"));
+  const status = parseStatus(String(formData.get("account_status") ?? "invited")) ?? "invited";
 
   if (!email) {
-    return { error: "Email is required." };
+    return { error: "Work email is required." };
   }
-  if (!ASSIGNABLE.includes(role)) {
+  if (!username) {
+    return { error: "Username is required." };
+  }
+  if (!role) {
     return { error: "Invalid role." };
-  }
-  if (access.role !== "admin" && role === "admin") {
-    return { error: "Only a platform admin can grant platform admin." };
   }
 
   let admin;
@@ -65,24 +151,28 @@ export async function createAppUser(formData: FormData) {
     email,
     password: `${crypto.randomUUID()}A1`,
     email_confirm: true,
-    user_metadata: { full_name: fullName || email },
+    user_metadata: {
+      full_name: fullName || username,
+      username,
+      auto_activate: status === "active",
+    },
   });
 
   if (error || !data.user) {
     return { error: error?.message ?? "Could not create the login." };
   }
 
-  const companyId =
-    access.role === "admin"
-      ? String(formData.get("company_id") ?? access.companyId ?? "") || null
-      : access.companyId;
+  const companyId = String(formData.get("company_id") ?? access.companyId ?? "") || null;
 
   const { error: profileError } = await admin
     .from("profiles")
     .update({
       role,
-      full_name: fullName || email,
+      username,
+      full_name: fullName || null,
+      work_email: email,
       company_id: companyId,
+      account_status: status === "active" ? "invited" : status,
     })
     .eq("id", data.user.id);
 
@@ -90,67 +180,38 @@ export async function createAppUser(formData: FormData) {
     return { error: profileError.message };
   }
 
-  if (!isSmtpConfigured()) {
-    revalidatePath("/app/settings");
-    return {
-      error: "User created, but email is not configured. Add Hostinger SMTP settings and resend the invite.",
-    };
+  const mailError = await sendInvite(email, fullName || username, role, access.companyName);
+  revalidatePath("/app/users");
+  revalidatePath("/app/users/approvals");
+  if (mailError) {
+    return { error: mailError };
   }
-
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email,
-  });
-
-  if (linkError || !linkData.properties?.hashed_token) {
-    revalidatePath("/app/settings");
-    return { error: linkError?.message ?? "User created, but the invite link could not be generated." };
-  }
-
-  const setupUrl = `${await originUrl()}/auth/set-password?token_hash=${encodeURIComponent(linkData.properties.hashed_token)}&type=recovery`;
-
-  try {
-    await sendMail({
-      to: email,
-      ...welcomeInviteEmail({
-        fullName: fullName || email,
-        role,
-        setupUrl,
-        companyName: access.companyName,
-      }),
-    });
-  } catch (mailError) {
-    revalidatePath("/app/settings");
-    return {
-      error:
-        mailError instanceof Error
-          ? `User created, but the welcome email failed: ${mailError.message}`
-          : "User created, but the welcome email failed.",
-    };
-  }
-
-  revalidatePath("/app/settings");
   return { error: null };
 }
 
 export async function updateAppUser(formData: FormData) {
   const access = await getAccessContext();
-  if (!canManageUsers(access.role)) {
-    return { error: "Only an admin can edit users." };
+  if (!isPlatformAdmin(access.role)) {
+    return { error: "Only a platform admin can edit users and assign roles." };
   }
 
   const id = String(formData.get("id") ?? "");
+  const username = String(formData.get("username") ?? "").trim();
   const fullName = String(formData.get("full_name") ?? "").trim();
-  const role = String(formData.get("role") ?? "employee") as AppRole;
+  const role = parseRole(String(formData.get("role") ?? "employee"));
+  const status = parseStatus(String(formData.get("account_status") ?? "invited"));
 
   if (!id) {
     return { error: "User is missing." };
   }
-  if (!ASSIGNABLE.includes(role)) {
-    return { error: "Invalid role." };
+  if (id === access.userId && role && role !== access.role) {
+    return { error: "You cannot change your own role." };
   }
-  if (access.role !== "admin" && role === "admin") {
-    return { error: "Only a platform admin can grant platform admin." };
+  if (!username) {
+    return { error: "Username is required." };
+  }
+  if (!role || !status) {
+    return { error: "Invalid role or status." };
   }
 
   let admin;
@@ -160,46 +221,133 @@ export async function updateAppUser(formData: FormData) {
     return { error: "Add SUPABASE_SERVICE_ROLE_KEY to edit users." };
   }
 
-  const companyId =
-    access.role === "admin"
-      ? String(formData.get("company_id") ?? "") || null
-      : access.companyId;
+  const companyId = String(formData.get("company_id") ?? "") || null;
+  const patch: Record<string, unknown> = {
+    username,
+    full_name: fullName || null,
+    company_id: companyId,
+    account_status: status,
+  };
+  if (id !== access.userId) {
+    patch.role = role;
+  }
+
+  const { error } = await admin.from("profiles").update(patch).eq("id", id);
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/app/users");
+  revalidatePath("/app/users/approvals");
+  return { error: null };
+}
+
+export async function approveUser(userId: string) {
+  const access = await getAccessContext();
+  if (!isPlatformAdmin(access.role)) {
+    return { error: "Only a platform admin can approve users." };
+  }
+  if (userId === access.userId) {
+    return { error: "You cannot approve your own account." };
+  }
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { error: "Add SUPABASE_SERVICE_ROLE_KEY to approve users." };
+  }
 
   const { error } = await admin
     .from("profiles")
     .update({
-      role,
-      full_name: fullName || null,
-      company_id: companyId,
+      account_status: "active",
+      approved_at: new Date().toISOString(),
+      approved_by: access.userId,
     })
-    .eq("id", id);
+    .eq("id", userId);
 
   if (error) {
     return { error: error.message };
   }
 
-  revalidatePath("/app/settings");
+  revalidatePath("/app/users");
+  revalidatePath("/app/users/approvals");
   return { error: null };
 }
 
-export async function listManagedUsers() {
+export async function declineUser(userId: string) {
   const access = await getAccessContext();
-  if (!canManageUsers(access.role)) {
-    return [];
+  if (!isPlatformAdmin(access.role)) {
+    return { error: "Only a platform admin can decline users." };
+  }
+  if (userId === access.userId) {
+    return { error: "You cannot decline your own account." };
   }
 
-  const supabase = await createClient();
-  if (!supabase) {
-    return [];
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { error: "Add SUPABASE_SERVICE_ROLE_KEY to decline users." };
   }
 
-  const { data } = await supabase
+  const { error } = await admin
     .from("profiles")
-    .select("id, full_name, role, company_id")
-    .order("full_name");
+    .update({ account_status: "suspended" })
+    .eq("id", userId);
 
-  return (data ?? []).map((row) => ({
-    ...row,
-    roleLabel: roleLabel((row.role as AppRole) ?? "employee"),
-  }));
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/app/users");
+  revalidatePath("/app/users/approvals");
+  return { error: null };
+}
+
+export async function submitOnboarding(formData: FormData) {
+  const access = await getAccessContext();
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  if (fullName.length < 2) {
+    return { error: "Enter your employee name." };
+  }
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { error: "Could not save your details." };
+  }
+
+  const { data: authUser } = await admin.auth.admin.getUserById(access.userId);
+  const autoActivate = authUser.user?.user_metadata?.auto_activate === true;
+  let nextStatus: UserAccountStatus = "pending_approval";
+  if (access.accountStatus === "suspended") {
+    nextStatus = "suspended";
+  } else if (access.accountStatus === "active" || autoActivate) {
+    nextStatus = "active";
+  }
+
+  const { error } = await admin
+    .from("profiles")
+    .update({
+      full_name: fullName,
+      details_submitted_at: new Date().toISOString(),
+      account_status: nextStatus,
+    })
+    .eq("id", access.userId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/app");
+  revalidatePath("/auth/complete-profile");
+  revalidatePath("/app/users/approvals");
+  return { error: null, status: nextStatus };
+}
+
+export async function listManagedUsers() {
+  return listDirectoryUsers();
 }

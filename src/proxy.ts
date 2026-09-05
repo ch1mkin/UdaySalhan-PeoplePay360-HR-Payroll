@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 
 export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pp-pathname", request.nextUrl.pathname);
   if (request.nextUrl.searchParams.get("detached") === "1") {
     requestHeaders.set("x-pp-detached", "1");
   }
