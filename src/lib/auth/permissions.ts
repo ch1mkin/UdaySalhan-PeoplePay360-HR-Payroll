@@ -119,12 +119,32 @@ const ROLE_MODULES: Record<AppRole, AppModule[]> = {
   admin: ALL_MODULES,
 };
 
+export function parseAppRole(value: unknown): AppRole | null {
+  switch (value) {
+    case "employee":
+    case "hr_manager":
+    case "hr_payroll_user":
+    case "hr_payroll_manager":
+    case "company_admin":
+    case "admin":
+      return value;
+    default:
+      return null;
+  }
+}
+
 export function canAccessModule(role: AppRole, module: AppModule): boolean {
-  return ROLE_MODULES[role].includes(module);
+  if (role === "admin") {
+    return true;
+  }
+  return ROLE_MODULES[role]?.includes(module) ?? false;
 }
 
 export function navGroupsForRole(role: AppRole): NavGroup[] {
-  const allowed = new Set(ROLE_MODULES[role]);
+  if (role === "admin") {
+    return NAV_GROUPS;
+  }
+  const allowed = new Set(ROLE_MODULES[role] ?? []);
   return NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) => allowed.has(item.module)),

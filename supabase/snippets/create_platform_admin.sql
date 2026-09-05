@@ -48,8 +48,8 @@ begin
       extensions.crypt(user_password, extensions.gen_salt('bf')),
       now(),
       now(),
-      '{"provider":"email","providers":["email"]}'::jsonb,
-      jsonb_build_object('full_name', 'Platform Admin'),
+      '{"provider":"email","providers":["email"],"role":"admin"}'::jsonb,
+      jsonb_build_object('full_name', 'Platform Admin', 'role', 'admin'),
       now(),
       now(),
       '',
@@ -90,11 +90,12 @@ begin
     where id = new_user_id;
   end if;
 
-  insert into public.profiles (id, full_name, role)
-  values (new_user_id, 'Platform Admin', 'admin')
+  insert into public.profiles (id, full_name, role, account_status)
+  values (new_user_id, 'Platform Admin', 'admin', 'active')
   on conflict (id) do update
     set
       role = 'admin',
+      account_status = 'active',
       full_name = coalesce(nullif(public.profiles.full_name, ''), excluded.full_name);
 
   raise notice 'Admin ready: % (id %)', user_email, new_user_id;

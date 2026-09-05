@@ -77,7 +77,8 @@ export async function registerFirstAdmin(formData: FormData) {
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name },
+    user_metadata: { full_name, role: "admin" },
+    app_metadata: { role: "admin" },
   });
 
   if (error || !data.user) {
@@ -87,7 +88,8 @@ export async function registerFirstAdmin(formData: FormData) {
   const { count: adminsAfterCreate } = await admin
     .from("profiles")
     .select("id", { count: "exact", head: true })
-    .eq("role", "admin");
+    .eq("role", "admin")
+    .neq("id", data.user.id);
 
   if ((adminsAfterCreate ?? 0) > 0) {
     await admin.auth.admin.deleteUser(data.user.id);
