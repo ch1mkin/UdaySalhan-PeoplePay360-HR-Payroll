@@ -3,12 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --pp-primary: #714b67;
-  --pp-primary-dark: #5b3b53;
-  --pp-primary-light: #f2eaf0;
-  --pp-secondary: #017e84;
-  --pp-secondary-dark: #00666b;
-  --pp-secondary-light: #e6f4f4;
+  --pp-primary: #93467d;
+  --pp-primary-dark: #7a3a68;
+  --pp-primary-light: #f6eaf2;
+  --pp-secondary: #008c9d;
+  --pp-secondary-dark: #006f7c;
+  --pp-secondary-light: #e6f5f7;
   --pp-gray: #8f8f8f;
   --pp-background: #f7f7f7;
   --pp-surface: #ffffff;

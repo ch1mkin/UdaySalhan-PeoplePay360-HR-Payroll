@@ -2,6 +2,8 @@ import "server-only";
 
 import nodemailer from "nodemailer";
 import { getSmtpConfig } from "@/lib/env";
+import { brandLogoAttachment } from "@/lib/email/layout";
+import { LOGO_CID } from "@/lib/email/theme";
 
 export type SendMailInput = {
   to: string | string[];
@@ -12,6 +14,7 @@ export type SendMailInput = {
     filename: string;
     content: Buffer | string;
     contentType?: string;
+    cid?: string;
   }[];
 };
 
@@ -32,6 +35,11 @@ function createTransport() {
 export async function sendMail(input: SendMailInput) {
   const config = getSmtpConfig();
   const transporter = createTransport();
+  const attachments = [...(input.attachments ?? [])];
+
+  if (input.html?.includes(`cid:${LOGO_CID}`) && !attachments.some((item) => item.cid === LOGO_CID)) {
+    attachments.unshift(await brandLogoAttachment());
+  }
 
   const result = await transporter.sendMail({
     from: `"${config.SMTP_FROM_NAME}" <${config.SMTP_FROM_EMAIL}>`,
@@ -40,7 +48,7 @@ export async function sendMail(input: SendMailInput) {
     subject: input.subject,
     text: input.text,
     html: input.html,
-    attachments: input.attachments,
+    attachments,
   });
 
   return {
@@ -53,4 +61,19 @@ export async function sendMail(input: SendMailInput) {
 export async function verifySmtp() {
   const transporter = createTransport();
   await transporter.verify();
+}
+
+export function getSmtpPublicStatus() {
+  try {
+    const config = getSmtpConfig();
+    return {
+      configured: true as const,
+      host: config.SMTP_HOST,
+      port: config.SMTP_PORT,
+      from: config.SMTP_FROM_EMAIL,
+      secure: config.SMTP_SECURE || config.SMTP_PORT === 465,
+    };
+  } catch {
+    return { configured: false as const, host: null, port: null, from: null, secure: null };
+  }
 }

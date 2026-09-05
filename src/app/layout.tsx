@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   title: "PeoplePay360",
   description: "Personnel and payroll.",
   icons: {
-    icon: "/logoHR360.png",
+    icon: [{ url: "/logoHR360.png", type: "image/png" }],
     apple: "/logoHR360.png",
   },
 };
