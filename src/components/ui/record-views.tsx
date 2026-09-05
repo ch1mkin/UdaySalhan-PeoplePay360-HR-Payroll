@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Kanban, List } from "lucide-react";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { DataRow, DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 import { cn } from "@/lib/cn";
 
 export type RecordViewMode = "kanban" | "list";
@@ -56,6 +57,7 @@ export function DualRecordView<T>({
   emptyAction,
   extraFilters,
   statusLabel = "Status",
+  persistKey,
 }: {
   items: T[];
   idOf: (item: T) => string;
@@ -71,11 +73,14 @@ export function DualRecordView<T>({
   emptyAction?: ReactNode;
   extraFilters?: ReactNode;
   statusLabel?: string;
+  persistKey?: string;
 }) {
   const router = useRouter();
-  const [view, setView] = useState<RecordViewMode>("list");
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("");
+  const pathname = usePathname();
+  const scope = persistKey ?? pathname;
+  const [view, setView] = usePersistedState(`records:${scope}:view`, "list");
+  const [query, setQuery] = usePersistedState(`records:${scope}:query`, "");
+  const [status, setStatus] = usePersistedState(`records:${scope}:status`, "");
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -126,12 +131,15 @@ export function DualRecordView<T>({
             ))}
           </select>
         </label>
-        <ViewToggle value={view} onChange={setView} />
+        <ViewToggle
+          value={view === "kanban" ? "kanban" : "list"}
+          onChange={(mode) => setView(mode)}
+        />
       </FilterBar>
 
       {filtered.length === 0 ? (
         <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />
-      ) : view === "list" ? (
+      ) : view !== "kanban" ? (
         <DataTable headers={tableHeaders}>
           {filtered.map((item) => {
             const href = hrefOf?.(item);

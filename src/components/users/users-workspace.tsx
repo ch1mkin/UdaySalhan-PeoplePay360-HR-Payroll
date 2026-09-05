@@ -14,6 +14,7 @@ import { DataCell } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { AppRole, UserAccountStatus } from "@/types/hr";
 import { useAppLoader } from "@/store/loader";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 
 const ROLES: { value: AppRole; label: string }[] = [
   { value: "employee", label: "Employee" },
@@ -214,7 +215,7 @@ export function UsersWorkspace({
   currentUserId: string;
 }) {
   const router = useRouter();
-  const [role, setRole] = useState("");
+  const [role, setRole] = usePersistedState("records:/app/users:role", "");
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<DirectoryUser | null>(null);
   const [reinvitingId, setReinvitingId] = useState<string | null>(null);

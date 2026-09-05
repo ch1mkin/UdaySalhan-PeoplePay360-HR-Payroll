@@ -1,16 +1,23 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { Search, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { usePersistedState } from "@/lib/hooks/use-persisted-state";
 
 export function SearchInput({
   name = "q",
-  defaultValue,
+  defaultValue = "",
   label = "Search",
 }: {
   name?: string;
   defaultValue?: string;
   label?: string;
 }) {
+  const pathname = usePathname();
+  const [value, setValue] = usePersistedState(`filter:${pathname}:${name}`, defaultValue);
+
   return (
     <label className="block min-w-[220px] flex-1">
       <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-pp-muted">
@@ -20,7 +27,8 @@ export function SearchInput({
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pp-gray" />
         <input
           name={name}
-          defaultValue={defaultValue}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
           className="h-10 w-full rounded-xl border border-pp-border bg-pp-bg/70 pl-9 pr-3 text-[13px] text-pp-text outline-none transition-colors focus:border-pp-primary focus:bg-pp-surface"
         />
       </span>
@@ -49,6 +57,9 @@ export function SelectFilter({
   defaultValue?: string;
   className?: string;
 }) {
+  const pathname = usePathname();
+  const [value, setValue] = usePersistedState(`filter:${pathname}:${name}`, defaultValue);
+
   return (
     <label className={cn("block min-w-[160px]", className)}>
       <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-pp-muted">
@@ -57,7 +68,8 @@ export function SelectFilter({
       <span className="relative block">
         <select
           name={name}
-          defaultValue={defaultValue}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
           className="h-10 w-full appearance-none rounded-xl border border-pp-border bg-pp-bg/70 py-0 pl-3 pr-8 text-[13px] text-pp-text outline-none transition-colors focus:border-pp-primary focus:bg-pp-surface"
         >
           <option value="">All</option>
