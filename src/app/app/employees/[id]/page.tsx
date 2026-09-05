@@ -8,7 +8,7 @@ import {
   listEmployees,
   listWorkingSchedules,
 } from "@/lib/data/hr";
-import { listAttendanceDays } from "@/lib/actions/attendance";
+import { getCompanyWorkHours, listAttendanceDays } from "@/lib/actions/attendance";
 import { PageContainer, PageHeader, Panel } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { DataCell, DataRow, DataTable } from "@/components/ui/data-table";
@@ -30,13 +30,14 @@ export default async function EmployeeProfilePage({
     notFound();
   }
 
-  const [contracts, timeOff, allocations, schedules, colleagues, days] = await Promise.all([
+  const [contracts, timeOff, allocations, schedules, colleagues, days, hours] = await Promise.all([
     listEmployeeContracts(employee.id),
     listEmployeeTimeOff(employee.id),
     listEmployeeAllocations(employee.id),
     listWorkingSchedules(access.companyId),
     listEmployees(access.companyId),
     employee.user_id ? listAttendanceDays(employee.user_id) : Promise.resolve([]),
+    getCompanyWorkHours(access.companyId),
   ]);
 
   const name = `${employee.first_name} ${employee.last_name}`;
@@ -119,7 +120,7 @@ export default async function EmployeeProfilePage({
       <Panel className="mb-5">
         <h2 className="mb-4 text-[16px] font-semibold">Attendance</h2>
         {employee.user_id ? (
-          <AttendanceCalendar userId={employee.user_id} days={days} canEdit />
+          <AttendanceCalendar days={days} hours={hours} />
         ) : (
           <p className="text-[13px] text-pp-muted">
             This employee is not linked to a login, so there is no attendance calendar yet.

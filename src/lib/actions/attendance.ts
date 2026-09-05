@@ -3,12 +3,29 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccessContext, isPlatformAdmin } from "@/lib/auth/access";
-import { canAccessModule } from "@/lib/auth/permissions";
+import { canAccessModule, canSetupAttendanceHours } from "@/lib/auth/permissions";
 import type { AppRole, AttendanceStatus } from "@/types/hr";
+import {
+  DEFAULT_WORK_END,
+  DEFAULT_WORK_START,
+  attendanceStatusFromTimes,
+  istDayEnd,
+  overtimeHours,
+  sliceTime,
+  todayISO,
+  workedHours,
+} from "@/lib/time/ist";
 
 export type AttendanceDay = {
   date: string;
   status: AttendanceStatus;
+  checkIn: string | null;
+  checkOut: string | null;
+};
+
+export type WorkHours = {
+  start: string;
+  end: string;
 };
 
 const STATUSES: AttendanceStatus[] = [
@@ -20,17 +37,8 @@ const STATUSES: AttendanceStatus[] = [
   "missing_checkout",
 ];
 
-function istDate(value = new Date()) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(value);
-}
-
-function dayBounds(date: string) {
-  return {
-    start: `${date}T00:00:00+05:30`,
-    end: `${date}T23:59:59.999+05:30`,
-    checkIn: `${date}T09:30:00+05:30`,
-    checkOut: `${date}T18:30:00+05:30`,
-  };
+function canViewUser(viewerId: string, role: AppRole, targetId: string) {
+  return viewerId === targetId || isPlatformAdmin(role) || role === "hr_manager" || role === "company_admin";
 }
 
 function splitName(fullName: string, fallback: string) {
@@ -44,8 +52,77 @@ function splitName(fullName: string, fallback: string) {
   };
 }
 
-function canViewUser(viewerId: string, role: AppRole, targetId: string) {
-  return viewerId === targetId || isPlatformAdmin(role) || role === "hr_manager" || role === "company_admin";
+async function adminOrNull() {
+  try {
+    return createAdminClient();
+  } catch {
+    return null;
+  }
+}
+
+function mapWorkHours(row: { work_start_time?: string | null; work_end_time?: string | null } | null): WorkHours {
+  return {
+    start: sliceTime(row?.work_start_time, DEFAULT_WORK_START),
+    end: sliceTime(row?.work_end_time, DEFAULT_WORK_END),
+  };
+}
+
+export async function getCompanyWorkHours(companyId: string | null): Promise<WorkHours> {
+  const defaults: WorkHours = { start: DEFAULT_WORK_START, end: DEFAULT_WORK_END };
+  if (!companyId) {
+    return defaults;
+  }
+  const admin = await adminOrNull();
+  if (!admin) {
+    return defaults;
+  }
+  const full = await admin
+    .from("companies")
+    .select("work_start_time, work_end_time")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (!full.error) {
+    return mapWorkHours(full.data);
+  }
+  return defaults;
+}
+
+export async function saveCompanyWorkHours(formData: FormData) {
+  const access = await getAccessContext();
+  if (!canSetupAttendanceHours(access.role)) {
+    return { error: "Only an admin or HR manager can set morning and evening times." };
+  }
+  if (!access.companyId) {
+    return { error: "Create a company in Settings first." };
+  }
+
+  const start = sliceTime(String(formData.get("work_start_time") ?? ""), "");
+  const end = sliceTime(String(formData.get("work_end_time") ?? ""), "");
+  if (!start || !end) {
+    return { error: "Choose a morning time and an evening time." };
+  }
+  const [startHour, startMin] = start.split(":").map(Number);
+  const [endHour, endMin] = end.split(":").map(Number);
+  if (endHour * 60 + endMin <= startHour * 60 + startMin) {
+    return { error: "Evening time must be after morning time." };
+  }
+
+  const admin = await adminOrNull();
+  if (!admin) {
+    return { error: "Add SUPABASE_SERVICE_ROLE_KEY to save office hours." };
+  }
+
+  const updated = await admin
+    .from("companies")
+    .update({ work_start_time: start, work_end_time: end })
+    .eq("id", access.companyId);
+  if (updated.error) {
+    return { error: updated.error.message };
+  }
+
+  revalidatePath("/app/attendance");
+  revalidatePath("/app/settings");
+  return { error: null };
 }
 
 async function ensureEmployeeId(userId: string, companyId: string) {
@@ -105,10 +182,8 @@ export async function listAttendanceDays(userId: string): Promise<AttendanceDay[
     return [];
   }
 
-  let admin;
-  try {
-    admin = createAdminClient();
-  } catch {
+  const admin = await adminOrNull();
+  if (!admin) {
     return [];
   }
 
@@ -128,84 +203,117 @@ export async function listAttendanceDays(userId: string): Promise<AttendanceDay[
 
   const { data } = await admin
     .from("attendance_records")
-    .select("check_in, status")
+    .select("check_in, check_out, status")
     .eq("employee_id", employeeId)
     .order("check_in");
 
   return (data ?? []).map((row) => ({
-    date: istDate(new Date(row.check_in)),
+    date: todayISO(new Date(row.check_in)),
+    checkIn: row.check_in ?? null,
+    checkOut: row.check_out ?? null,
     status: (STATUSES.includes(row.status as AttendanceStatus) ? row.status : "present") as AttendanceStatus,
   }));
 }
 
-export async function saveAttendanceDay(formData: FormData) {
+export async function punchAttendance(kind: "in" | "out") {
   const access = await getAccessContext();
-  const targetId = String(formData.get("user_id") ?? access.userId);
-  const date = String(formData.get("date") ?? "").trim();
-  const status = String(formData.get("status") ?? "") as AttendanceStatus;
-
-  if (!STATUSES.includes(status)) {
-    return { error: "Choose a valid attendance status." };
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return { error: "Choose a valid date." };
-  }
-  if (!canViewUser(access.userId, access.role, targetId)) {
-    return { error: "You cannot update this attendance calendar." };
-  }
-  if (targetId !== access.userId && !isPlatformAdmin(access.role) && access.role !== "hr_manager" && access.role !== "company_admin") {
-    return { error: "Only HR or an admin can mark another person's attendance." };
+  if (!canAccessModule(access.role, "attendance") && !isPlatformAdmin(access.role)) {
+    return { error: "You cannot mark attendance." };
   }
   if (!access.companyId) {
     return { error: "Create a company in Settings first." };
   }
 
-  let admin;
-  try {
-    admin = createAdminClient();
-  } catch {
+  const admin = await adminOrNull();
+  if (!admin) {
     return { error: "Add SUPABASE_SERVICE_ROLE_KEY to save attendance." };
   }
 
   let employeeId: string;
   try {
-    employeeId = await ensureEmployeeId(targetId, access.companyId);
+    employeeId = await ensureEmployeeId(access.userId, access.companyId);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not save attendance." };
   }
 
-  const bounds = dayBounds(date);
-  const worked =
-    status === "absent" ? 0 : status === "late" || status === "early_departure" ? 7.5 : status === "overtime" ? 10 : 8;
-  const payload = {
-    company_id: access.companyId,
-    employee_id: employeeId,
-    check_in: bounds.checkIn,
-    check_out: status === "absent" || status === "missing_checkout" ? null : bounds.checkOut,
-    worked_hours: worked,
-    overtime_hours: status === "overtime" ? 2 : 0,
-    status,
-    source: "manual" as const,
-  };
+  const today = todayISO();
+  const hours = await getCompanyWorkHours(access.companyId);
+  const now = new Date();
 
-  const { data: existing } = await admin
+  const { data: open } = await admin
     .from("attendance_records")
-    .select("id")
+    .select("id, check_in, check_out")
     .eq("employee_id", employeeId)
-    .gte("check_in", bounds.start)
-    .lte("check_in", bounds.end)
+    .is("check_out", null)
     .maybeSingle();
 
-  const result = existing?.id
-    ? await admin.from("attendance_records").update(payload).eq("id", existing.id)
-    : await admin.from("attendance_records").insert(payload);
+  if (open?.check_in && todayISO(new Date(open.check_in)) !== today) {
+    await admin
+      .from("attendance_records")
+      .update({
+        check_out: istDayEnd(todayISO(new Date(open.check_in))),
+        status: "missing_checkout",
+      })
+      .eq("id", open.id);
+  }
 
-  if (result.error) {
-    return { error: result.error.message };
+  const dayStart = `${today}T00:00:00+05:30`;
+  const dayEnd = istDayEnd(today);
+  const { data: todayRow } = await admin
+    .from("attendance_records")
+    .select("id, check_in, check_out, status")
+    .eq("employee_id", employeeId)
+    .gte("check_in", dayStart)
+    .lte("check_in", dayEnd)
+    .maybeSingle();
+
+  if (kind === "in") {
+    if (todayRow?.check_in) {
+      return { error: "You have already checked in today." };
+    }
+    const status = attendanceStatusFromTimes(now, null, hours.start, hours.end);
+    const inserted = await admin.from("attendance_records").insert({
+      company_id: access.companyId,
+      employee_id: employeeId,
+      check_in: now.toISOString(),
+      check_out: null,
+      worked_hours: 0,
+      overtime_hours: 0,
+      status,
+      source: "manual",
+    });
+    if (inserted.error) {
+      return { error: inserted.error.message };
+    }
+  } else {
+    if (!todayRow?.check_in) {
+      return { error: "Check in first." };
+    }
+    if (todayRow.check_out) {
+      return { error: "You have already checked out today." };
+    }
+    const checkIn = new Date(todayRow.check_in);
+    if (now.getTime() < checkIn.getTime()) {
+      return { error: "Check out cannot be before check in." };
+    }
+    const status = attendanceStatusFromTimes(checkIn, now, hours.start, hours.end);
+    const updated = await admin
+      .from("attendance_records")
+      .update({
+        check_out: now.toISOString(),
+        worked_hours: workedHours(checkIn, now),
+        overtime_hours: overtimeHours(now, hours.end),
+        status,
+      })
+      .eq("id", todayRow.id);
+    if (updated.error) {
+      return { error: updated.error.message };
+    }
   }
 
   revalidatePath("/app/attendance");
-  revalidatePath(`/app/users/${targetId}`);
+  revalidatePath(`/app/users/${access.userId}`);
+  revalidatePath("/app/employees");
   revalidatePath("/app/profile");
   return { error: null };
 }

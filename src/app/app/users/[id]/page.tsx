@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { isPlatformAdmin, requireModule } from "@/lib/auth/access";
 import { getDirectoryUser } from "@/lib/actions/users";
-import { listAttendanceDays } from "@/lib/actions/attendance";
+import { getCompanyWorkHours, listAttendanceDays } from "@/lib/actions/attendance";
 import { PageContainer, PageHeader, Panel } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AttendanceCalendar } from "@/components/attendance/attendance-calendar";
@@ -28,7 +28,10 @@ export default async function AdminUserProfilePage({
   if (!user) {
     notFound();
   }
-  const days = await listAttendanceDays(user.id);
+  const [days, hours] = await Promise.all([
+    listAttendanceDays(user.id),
+    getCompanyWorkHours(access.companyId),
+  ]);
 
   return (
     <PageContainer>
@@ -55,7 +58,7 @@ export default async function AdminUserProfilePage({
       </Panel>
       <Panel>
         <h2 className="mb-4 text-[16px] font-semibold">Attendance</h2>
-        <AttendanceCalendar userId={user.id} days={days} canEdit />
+        <AttendanceCalendar days={days} hours={hours} />
       </Panel>
     </PageContainer>
   );

@@ -145,6 +145,10 @@ export function canAccessModule(role: AppRole, module: AppModule): boolean {
   return ROLE_MODULES[role]?.includes(module) ?? false;
 }
 
+export function canSetupAttendanceHours(role: AppRole) {
+  return role === "admin" || role === "hr_manager" || role === "company_admin";
+}
+
 export function navGroupsForRole(role: AppRole): NavGroup[] {
   if (role === "admin") {
     return NAV_GROUPS;
