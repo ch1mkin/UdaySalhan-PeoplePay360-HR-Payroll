@@ -55,6 +55,80 @@ function nextOffset(count: number) {
   return 56 + count * 28;
 }
 
+const STORAGE_PREFIX = "peoplepay360-workspace-v1:";
+
+type WorkspaceSnapshot = {
+  tabs: WorkspaceTab[];
+  zTop: number;
+};
+
+function storageKey(userId: string) {
+  return `${STORAGE_PREFIX}${userId}`;
+}
+
+function asMode(value: unknown): WindowMode {
+  if (value === "float" || value === "minimized" || value === "tab") {
+    return value;
+  }
+  return "tab";
+}
+
+function normalizeTab(value: unknown): WorkspaceTab | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const row = value as Record<string, unknown>;
+  if (typeof row.id !== "string" || typeof row.href !== "string" || typeof row.title !== "string") {
+    return null;
+  }
+  return {
+    id: row.id,
+    href: row.href,
+    title: row.title,
+    dirty: false,
+    mode: asMode(row.mode),
+    closing: false,
+    z: Number(row.z) || 1,
+    x: Number(row.x) || 56,
+    y: Number(row.y) || 56,
+    w: Number(row.w) || 760,
+    h: Number(row.h) || 520,
+  };
+}
+
+function readSnapshot(userId: string): WorkspaceSnapshot {
+  if (typeof window === "undefined") {
+    return { tabs: [], zTop: 20 };
+  }
+  try {
+    const raw = window.localStorage.getItem(storageKey(userId));
+    if (!raw) {
+      return { tabs: [], zTop: 20 };
+    }
+    const parsed = JSON.parse(raw) as { tabs?: unknown; zTop?: unknown };
+    const tabs = Array.isArray(parsed.tabs)
+      ? parsed.tabs.map(normalizeTab).filter((tab): tab is WorkspaceTab => Boolean(tab))
+      : [];
+    return {
+      tabs,
+      zTop: typeof parsed.zTop === "number" && parsed.zTop > 0 ? parsed.zTop : 20,
+    };
+  } catch {
+    return { tabs: [], zTop: 20 };
+  }
+}
+
+function writeSnapshot(userId: string | null, tabs: WorkspaceTab[], zTop: number) {
+  if (!userId || typeof window === "undefined") {
+    return;
+  }
+  const snapshot: WorkspaceSnapshot = {
+    tabs: tabs.filter((tab) => !tab.closing),
+    zTop,
+  };
+  window.localStorage.setItem(storageKey(userId), JSON.stringify(snapshot));
+}
+
 export const useWorkspace = create<WorkspaceState>((set, get) => ({
   ownerId: null,
   tabs: [],
@@ -63,7 +137,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     if (get().ownerId === userId) {
       return;
     }
-    set({ ownerId: userId, tabs: [], zTop: 20 });
+    const snapshot = readSnapshot(userId);
+    set({ ownerId: userId, tabs: snapshot.tabs, zTop: snapshot.zTop });
   },
   clearWorkspace: () => set({ ownerId: null, tabs: [], zTop: 20 }),
   openTab: (tab) => {
@@ -161,3 +236,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     }));
   },
 }));
+
+useWorkspace.subscribe((state) => {
+  writeSnapshot(state.ownerId, state.tabs, state.zTop);
+});
