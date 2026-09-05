@@ -46,7 +46,7 @@ export function Modal({
       <button
         type="button"
         aria-label="Close dialog"
-        className="absolute inset-0 bg-white/50 backdrop-blur-[8px]"
+        className="absolute inset-0 bg-[#2f1a28]/45 backdrop-blur-[2px]"
         onClick={onClose}
       />
       <div
@@ -54,27 +54,27 @@ export function Modal({
         aria-modal="true"
         aria-labelledby="pp-modal-title"
         className={cn(
-          "relative max-h-[90vh] w-full max-w-xl overflow-auto rounded-2xl border border-white/80 bg-white/70 p-6 shadow-[0_24px_80px_rgba(47,47,47,0.08)] backdrop-blur-xl",
+          "relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border-2 border-pp-primary bg-white shadow-[0_24px_64px_rgba(147,70,125,0.22)]",
           className,
         )}
       >
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 id="pp-modal-title" className="text-[20px] font-semibold tracking-tight text-pp-text">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-pp-primary/30 bg-pp-primary-light px-6 py-4">
+          <div className="min-w-0">
+            <h2 id="pp-modal-title" className="text-[18px] font-semibold tracking-tight text-pp-primary-dark">
               {title}
             </h2>
-            {description ? <p className="mt-1 text-[13px] text-pp-muted">{description}</p> : null}
+            {description ? <p className="mt-1 text-[13px] leading-5 text-pp-muted">{description}</p> : null}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1.5 text-pp-muted hover:bg-pp-bg hover:text-pp-text"
+            className="mt-0.5 shrink-0 rounded-full p-1.5 text-pp-primary hover:bg-white hover:text-pp-primary-dark"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        {children}
+        <div className="overflow-auto px-6 py-5">{children}</div>
       </div>
     </div>
   );

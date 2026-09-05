@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List as ListIcon } from "lucide-react";
-import { createAppUser, updateAppUser, type DirectoryUser } from "@/lib/actions/users";
+import { LayoutGrid, List as ListIcon, Mail } from "lucide-react";
+import { createAppUser, reinviteAppUser, updateAppUser, type DirectoryUser } from "@/lib/actions/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,14 +33,21 @@ const STATUSES: { value: UserAccountStatus; label: string }[] = [
   { value: "suspended", label: "Suspended" },
 ];
 
+const selectClass =
+  "h-10 w-full rounded-pp border border-pp-border bg-white px-3 text-sm text-pp-text outline-none transition-colors focus:border-pp-primary disabled:bg-pp-bg disabled:text-pp-muted";
+
 function UserForm({
   user,
   currentUserId,
   onDone,
+  onReinvite,
+  reinviting,
 }: {
   user?: DirectoryUser;
   currentUserId: string;
   onDone: () => void;
+  onReinvite?: () => void;
+  reinviting?: boolean;
 }) {
   const router = useRouter();
   const start = useAppLoader((state) => state.start);
@@ -48,10 +55,11 @@ function UserForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const editingSelf = user?.id === currentUserId;
+  const canReinvite = Boolean(user && user.work_email && user.id !== currentUserId);
 
   return (
     <form
-      className="grid gap-4 sm:grid-cols-2"
+      className="flex flex-col gap-5"
       onSubmit={async (event) => {
         event.preventDefault();
         setPending(true);
@@ -71,73 +79,126 @@ function UserForm({
       }}
     >
       {user ? <input type="hidden" name="id" value={user.id} /> : null}
-      <Field>
-        <Label htmlFor="username">Username</Label>
-        <Input id="username" name="username" required defaultValue={user?.username ?? ""} />
-      </Field>
-      <Field>
-        <Label htmlFor="email">Work email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          required={!user}
-          readOnly={Boolean(user)}
-          defaultValue={user?.work_email ?? ""}
-          className={user ? "bg-white/60 text-pp-muted" : undefined}
-        />
-      </Field>
-      <Field>
-        <Label htmlFor="full_name">Employee name</Label>
-        <Input id="full_name" name="full_name" defaultValue={user?.full_name ?? ""} />
-      </Field>
-      <Field>
-        <Label htmlFor="role">Role</Label>
-        <select
-          id="role"
-          name="role"
-          defaultValue={user?.role ?? "employee"}
-          disabled={editingSelf}
-          className="h-10 rounded-pp border border-pp-border bg-white/80 px-3 text-sm text-pp-text outline-none focus:border-pp-primary disabled:text-pp-muted"
-        >
-          {ROLES.map((role) => (
-            <option key={role.value} value={role.value}>
-              {role.label}
-            </option>
-          ))}
-        </select>
-        {editingSelf ? (
-          <p className="mt-1 text-[12px] text-pp-muted">You cannot change your own role.</p>
-        ) : null}
-      </Field>
-      <Field>
-        <Label htmlFor="account_status">Status</Label>
-        <select
-          id="account_status"
-          name="account_status"
-          defaultValue={user?.account_status ?? "invited"}
-          className="h-10 rounded-pp border border-pp-border bg-white/80 px-3 text-sm text-pp-text outline-none focus:border-pp-primary"
-        >
-          {STATUSES.map((status) => (
-            <option key={status.value} value={status.value}>
-              {status.label}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+        <Field>
+          <Label htmlFor="username">Username</Label>
+          <Input id="username" name="username" required defaultValue={user?.username ?? ""} />
+        </Field>
+        <Field>
+          <Label htmlFor="email">Work email</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            required={!user}
+            readOnly={Boolean(user)}
+            defaultValue={user?.work_email ?? ""}
+            className={user ? "bg-pp-bg text-pp-muted" : undefined}
+          />
+        </Field>
+        <Field className="sm:col-span-2">
+          <Label htmlFor="full_name">Employee name</Label>
+          <Input id="full_name" name="full_name" defaultValue={user?.full_name ?? ""} />
+        </Field>
+        <Field>
+          <Label htmlFor="role">Role</Label>
+          <select
+            id="role"
+            name="role"
+            defaultValue={user?.role ?? "employee"}
+            disabled={editingSelf}
+            className={selectClass}
+          >
+            {ROLES.map((role) => (
+              <option key={role.value} value={role.value}>
+                {role.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field>
+          <Label htmlFor="account_status">Status</Label>
+          <select
+            id="account_status"
+            name="account_status"
+            defaultValue={user?.account_status ?? "invited"}
+            className={selectClass}
+          >
+            {STATUSES.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      {editingSelf ? (
+        <p className="text-[12px] text-pp-muted">You cannot change your own role.</p>
+      ) : null}
       {user ? null : (
-        <p className="sm:col-span-2 text-[13px] text-pp-muted">
+        <p className="text-[13px] leading-5 text-pp-muted">
           The user joins your company automatically. An invite is sent to the work email. They fill
-          in their details; you approve them under Approvals. They cannot assign themselves a role.
+          in their details; you approve them under Approvals.
         </p>
       )}
-      {error ? <p className="sm:col-span-2 text-[13px] text-pp-danger">{error}</p> : null}
-      <div className="sm:col-span-2">
+      {error ? <p className="text-[13px] text-pp-danger">{error}</p> : null}
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-pp-primary/20 pt-4">
+        {canReinvite ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="mr-auto border-pp-primary/40 text-pp-primary"
+            disabled={reinviting}
+            onClick={onReinvite}
+          >
+            <Mail className="h-3.5 w-3.5" />
+            {reinviting ? "Sending…" : "Reinvite"}
+          </Button>
+        ) : null}
+        <Button type="button" variant="secondary" onClick={onDone}>
+          Cancel
+        </Button>
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : user ? "Save user" : "Create user and send invite"}
         </Button>
       </div>
     </form>
+  );
+}
+
+function UserActions({
+  user,
+  currentUserId,
+  reinviting,
+  onEdit,
+  onReinvite,
+}: {
+  user: DirectoryUser;
+  currentUserId: string;
+  reinviting: boolean;
+  onEdit: () => void;
+  onReinvite: () => void;
+}) {
+  const canReinvite = Boolean(user.work_email) && user.id !== currentUserId;
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {canReinvite ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="border-pp-primary/40 text-pp-primary"
+          disabled={reinviting}
+          onClick={onReinvite}
+        >
+          <Mail className="h-3.5 w-3.5" />
+          {reinviting ? "Sending…" : "Reinvite"}
+        </Button>
+      ) : null}
+      <Button type="button" size="sm" variant="secondary" onClick={onEdit}>
+        Edit
+      </Button>
+    </div>
   );
 }
 
@@ -148,12 +209,16 @@ export function UsersWorkspace({
   users: DirectoryUser[];
   currentUserId: string;
 }) {
+  const router = useRouter();
   const [view, setView] = useState<"table" | "list">("table");
   const [query, setQuery] = useState("");
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<DirectoryUser | null>(null);
+  const [reinvitingId, setReinvitingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [noticeError, setNoticeError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -174,6 +239,21 @@ export function UsersWorkspace({
     });
   }, [users, query, role, status]);
 
+  async function handleReinvite(user: DirectoryUser) {
+    setNotice(null);
+    setNoticeError(null);
+    setReinvitingId(user.id);
+    const result = await reinviteAppUser(user.id);
+    setReinvitingId(null);
+    if (result.error) {
+      setNoticeError(result.error);
+      return;
+    }
+    setNotice(`Invite sent to ${result.email}.`);
+    setEditing(null);
+    router.refresh();
+  }
+
   return (
     <>
       <div className="mb-4 flex justify-end">
@@ -181,6 +261,16 @@ export function UsersWorkspace({
           New user
         </Button>
       </div>
+      {notice ? (
+        <p className="mb-3 rounded-pp border border-pp-secondary/30 bg-pp-secondary-light px-3 py-2 text-[13px] text-pp-secondary-dark">
+          {notice}
+        </p>
+      ) : null}
+      {noticeError ? (
+        <p className="mb-3 rounded-pp border border-pp-danger/30 bg-pp-danger-light px-3 py-2 text-[13px] text-pp-danger">
+          {noticeError}
+        </p>
+      ) : null}
       <FilterBar>
         <label className="block min-w-[220px] flex-1">
           <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-pp-muted">
@@ -268,9 +358,13 @@ export function UsersWorkspace({
                 <StatusBadge status={user.account_status} />
               </DataCell>
               <DataCell className="text-right">
-                <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(user)}>
-                  Edit
-                </Button>
+                <UserActions
+                  user={user}
+                  currentUserId={currentUserId}
+                  reinviting={reinvitingId === user.id}
+                  onEdit={() => setEditing(user)}
+                  onReinvite={() => void handleReinvite(user)}
+                />
               </DataCell>
             </DataRow>
           ))}
@@ -286,9 +380,13 @@ export function UsersWorkspace({
               <p className="min-w-[180px] text-[13px] text-pp-muted">{user.work_email || "—"}</p>
               <p className="text-[13px]">{user.roleLabel}</p>
               <StatusBadge status={user.account_status} />
-              <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(user)}>
-                Edit
-              </Button>
+              <UserActions
+                user={user}
+                currentUserId={currentUserId}
+                reinviting={reinvitingId === user.id}
+                onEdit={() => setEditing(user)}
+                onReinvite={() => void handleReinvite(user)}
+              />
             </div>
           ))}
         </div>
@@ -313,6 +411,8 @@ export function UsersWorkspace({
             user={editing}
             currentUserId={currentUserId}
             onDone={() => setEditing(null)}
+            reinviting={reinvitingId === editing.id}
+            onReinvite={() => void handleReinvite(editing)}
           />
         ) : null}
       </Modal>

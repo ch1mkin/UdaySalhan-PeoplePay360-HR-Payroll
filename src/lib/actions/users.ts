@@ -86,7 +86,7 @@ async function generateSetupUrl(admin: ReturnType<typeof createAdminClient>, ema
 
 async function sendInvite(email: string, fullName: string, role: AppRole, companyName: string) {
   if (!isSmtpConfigured()) {
-    return "User saved, but email is not configured. Add Hostinger SMTP settings on Vercel and try again.";
+    return "Email is not configured. Add Hostinger SMTP settings on Vercel and try again.";
   }
 
   let admin;
@@ -114,9 +114,7 @@ async function sendInvite(email: string, fullName: string, role: AppRole, compan
       }),
     });
   } catch (mailError) {
-    return mailError instanceof Error
-      ? `User saved, but the invite email failed: ${mailError.message}`
-      : "User saved, but the invite email failed.";
+    return mailError instanceof Error ? mailError.message : "The invite email could not be sent.";
   }
 
   return null;
@@ -216,7 +214,7 @@ export async function createAppUser(formData: FormData) {
   revalidatePath("/app/users");
   revalidatePath("/app/users/approvals");
   if (mailError) {
-    return { error: mailError };
+    return { error: `User saved, but the invite email failed: ${mailError}` };
   }
   return { error: null };
 }
@@ -273,6 +271,65 @@ export async function updateAppUser(formData: FormData) {
   revalidatePath("/app/users");
   revalidatePath("/app/users/approvals");
   return { error: null };
+}
+
+export async function reinviteAppUser(userId: string) {
+  const access = await getAccessContext();
+  if (!isPlatformAdmin(access.role)) {
+    return { error: "Only a platform admin can resend invites." };
+  }
+  if (userId === access.userId) {
+    return { error: "You cannot reinvite your own account." };
+  }
+
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { error: "Add SUPABASE_SERVICE_ROLE_KEY to send invites." };
+  }
+
+  const { data: profile, error } = await admin
+    .from("profiles")
+    .select("username, full_name, work_email, role, account_status")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error || !profile) {
+    return { error: error?.message ?? "User was not found." };
+  }
+
+  const email = String(profile.work_email ?? "").trim().toLowerCase();
+  if (!email) {
+    return { error: "This user has no work email to invite." };
+  }
+
+  const role = parseRole(String(profile.role ?? "employee")) ?? "employee";
+  const status = parseStatus(String(profile.account_status ?? "invited")) ?? "invited";
+
+  if (status !== "active") {
+    const { error: statusError } = await admin
+      .from("profiles")
+      .update({ account_status: "invited" })
+      .eq("id", userId);
+    if (statusError) {
+      return { error: statusError.message };
+    }
+  }
+
+  const mailError = await sendInvite(
+    email,
+    profile.full_name || profile.username || email,
+    role,
+    access.companyName,
+  );
+
+  revalidatePath("/app/users");
+  revalidatePath("/app/users/approvals");
+  if (mailError) {
+    return { error: mailError };
+  }
+  return { error: null, email };
 }
 
 export async function approveUser(userId: string) {
