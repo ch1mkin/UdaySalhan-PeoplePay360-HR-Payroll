@@ -7,7 +7,6 @@ import { navGroupsForRole } from "@/lib/auth/permissions";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { WorkspaceTabs } from "@/components/workspace/workspace-tabs";
-import { WorkspacePanes } from "@/components/workspace/workspace-panes";
 import { FloatingWindows, WindowDock } from "@/components/workspace/floating-windows";
 import { tabFromPathname, useWorkspace } from "@/store/workspace";
 
@@ -25,13 +24,16 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useLayoutEffect(() => {
+    if (detached) {
+      return;
+    }
     const workspace = useWorkspace.getState();
     workspace.resetForUser(access.userId);
     const next = tabFromPathname(pathname);
     if (next) {
       workspace.openTab(next);
     }
-  }, [access.userId, pathname]);
+  }, [access.userId, pathname, detached]);
 
   if (detached) {
     return <div className="min-h-screen bg-pp-bg text-pp-text">{children}</div>;
@@ -55,11 +57,10 @@ export function AppShell({
       <div className="flex min-h-[calc(100vh-3.5rem)]">
         <Sidebar groups={groups} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="hidden min-h-0 flex-1 flex-col lg:flex">
+          <div className="hidden lg:block">
             <WorkspaceTabs />
-            <WorkspacePanes />
           </div>
-          <main className="min-w-0 flex-1 px-4 py-5 md:px-6 lg:hidden">{children}</main>
+          <main className="min-w-0 flex-1 px-4 py-5 md:px-6">{children}</main>
         </div>
       </div>
       <div className="hidden lg:block">

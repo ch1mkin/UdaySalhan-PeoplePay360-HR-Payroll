@@ -111,7 +111,7 @@ function normalizeTab(value: unknown): WorkspaceTab | null {
     href: row.href,
     title: row.title,
     dirty: false,
-    mode: asMode(row.mode),
+    mode: asMode(row.mode) === "float" ? "tab" : asMode(row.mode),
     closing: false,
     z: Number(row.z) || 1,
     x: Number(row.x) || 56,
