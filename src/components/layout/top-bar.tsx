@@ -18,7 +18,7 @@ export function TopBar({
     <header className="flex h-14 items-center gap-4 border-b border-pp-border bg-pp-surface px-3 md:px-4">
       <button
         type="button"
-        className="rounded-pp p-1.5 text-pp-muted hover:bg-pp-bg md:hidden"
+        className="rounded-pp p-1.5 text-pp-muted hover:bg-pp-bg lg:hidden"
         onClick={onMenu}
         aria-label="Open navigation"
       >

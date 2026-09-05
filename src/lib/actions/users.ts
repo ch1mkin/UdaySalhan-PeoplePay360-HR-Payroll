@@ -29,6 +29,11 @@ export type DirectoryUser = {
   account_status: UserAccountStatus;
   company_id: string | null;
   roleLabel: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  approvedByName: string | null;
+  details_submitted_at: string | null;
+  updated_at: string | null;
 };
 
 function parseRole(value: string) {
@@ -133,17 +138,60 @@ export async function listDirectoryUsers() {
     return [];
   }
 
-  const { data } = await admin
+  const full = await admin
     .from("profiles")
-    .select("id, username, full_name, work_email, role, account_status, company_id")
+    .select(
+      "id, username, full_name, work_email, role, account_status, company_id, approved_at, approved_by, details_submitted_at, updated_at",
+    )
     .order("username");
+  const loaded = full.error
+    ? await admin
+        .from("profiles")
+        .select("id, username, full_name, work_email, role, account_status, company_id")
+        .order("username")
+    : full;
+  const data = (loaded.data ?? []) as Array<{
+    id: string;
+    username: string | null;
+    full_name: string | null;
+    work_email: string | null;
+    role: string | null;
+    account_status: string | null;
+    company_id: string | null;
+    approved_at?: string | null;
+    approved_by?: string | null;
+    details_submitted_at?: string | null;
+    updated_at?: string | null;
+  }>;
 
-  return (data ?? []).map((row) => ({
+  const approverIds = [...new Set(data.map((row) => row.approved_by).filter(Boolean))] as string[];
+  const names = new Map<string, string>();
+  if (approverIds.length > 0) {
+    const { data: approvers } = await admin
+      .from("profiles")
+      .select("id, full_name, username")
+      .in("id", approverIds);
+    for (const row of approvers ?? []) {
+      names.set(row.id, row.full_name || row.username || "Admin");
+    }
+  }
+
+  return data.map((row) => ({
     ...row,
     role: (row.role as AppRole) ?? "employee",
     account_status: (row.account_status as UserAccountStatus) ?? "invited",
     roleLabel: roleLabel((row.role as AppRole) ?? "employee"),
+    approved_at: row.approved_at ?? null,
+    approved_by: row.approved_by ?? null,
+    approvedByName: row.approved_by ? names.get(row.approved_by) ?? null : null,
+    details_submitted_at: row.details_submitted_at ?? null,
+    updated_at: row.updated_at ?? null,
   })) satisfies DirectoryUser[];
+}
+
+export async function getDirectoryUser(userId: string) {
+  const users = await listDirectoryUsers();
+  return users.find((user) => user.id === userId) ?? null;
 }
 
 export async function createAppUser(formData: FormData) {

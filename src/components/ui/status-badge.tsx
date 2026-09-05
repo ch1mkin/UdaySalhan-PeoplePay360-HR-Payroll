@@ -21,6 +21,9 @@ const styles: Record<string, string> = {
   present: "bg-pp-success-light text-pp-success",
   absent: "bg-pp-danger-light text-pp-danger",
   late: "bg-pp-warning-light text-pp-warning",
+  overtime: "bg-pp-primary-light text-pp-primary",
+  early_departure: "bg-pp-warning-light text-pp-warning",
+  missing_checkout: "bg-pp-bg text-pp-muted",
   on_leave: "bg-pp-secondary-light text-pp-secondary",
 };
 

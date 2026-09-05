@@ -34,8 +34,11 @@ export type WorkspaceTab = {
 };
 
 type WorkspaceState = {
+  ownerId: string | null;
   tabs: WorkspaceTab[];
   zTop: number;
+  resetForUser: (userId: string) => void;
+  clearWorkspace: () => void;
   openTab: (tab: { id: string; href: string; title: string }) => void;
   closeTab: (id: string) => boolean;
   finishClose: (id: string) => void;
@@ -52,8 +55,16 @@ function nextOffset(count: number) {
 }
 
 export const useWorkspace = create<WorkspaceState>((set, get) => ({
+  ownerId: null,
   tabs: [],
   zTop: 20,
+  resetForUser: (userId) => {
+    if (get().ownerId === userId) {
+      return;
+    }
+    set({ ownerId: userId, tabs: [], zTop: 20 });
+  },
+  clearWorkspace: () => set({ ownerId: null, tabs: [], zTop: 20 }),
   openTab: (tab) => {
     set((state) => {
       if (state.tabs.some((item) => item.id === tab.id && !item.closing)) {

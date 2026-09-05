@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { submitOnboarding } from "@/lib/actions/users";
 import { createClient } from "@/lib/supabase/client";
+import { useWorkspace } from "@/store/workspace";
 
 export function CompleteProfileForm({
   username,
@@ -73,6 +74,7 @@ export function CompleteProfileForm({
           className="mt-4 w-full text-[13px] text-pp-muted"
           onClick={async () => {
             const supabase = createClient();
+            useWorkspace.getState().clearWorkspace();
             await supabase?.auth.signOut();
             router.push("/");
           }}

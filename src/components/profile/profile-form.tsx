@@ -11,6 +11,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { roleLabel } from "@/lib/auth/permissions";
 import type { AppRole } from "@/types/hr";
 import { useAppLoader } from "@/store/loader";
+import { useWorkspace } from "@/store/workspace";
 
 export function ProfileForm({
   fullName,
@@ -96,6 +97,7 @@ export function ProfileForm({
           type="button"
           variant="secondary"
           onClick={async () => {
+            useWorkspace.getState().clearWorkspace();
             const supabase = createClient();
             await supabase?.auth.signOut();
             router.push("/");

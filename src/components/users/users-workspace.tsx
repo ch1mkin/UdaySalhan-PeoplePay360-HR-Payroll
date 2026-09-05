@@ -195,6 +195,9 @@ function UserActions({
           {reinviting ? "Sending…" : "Reinvite"}
         </Button>
       ) : null}
+      <Button type="button" size="sm" variant="secondary" href={`/app/users/${user.id}`}>
+        View
+      </Button>
       <Button type="button" size="sm" variant="secondary" onClick={onEdit}>
         Edit
       </Button>

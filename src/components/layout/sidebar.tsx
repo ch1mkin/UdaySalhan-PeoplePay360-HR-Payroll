@@ -3,21 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { NavGroup } from "@/lib/auth/permissions";
+import { BrandMark } from "@/components/brand/logo";
 
 function isActive(pathname: string, href: string) {
   if (href === "/app") {
     return pathname === "/app";
   }
   if (href === "/app/users") {
-    return pathname === "/app/users";
+    return pathname === "/app/users" || /^\/app\/users\/[^/]+$/.test(pathname);
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function Group({ group }: { group: NavGroup }) {
+function Group({ group, onNavigate }: { group: NavGroup; onNavigate?: () => void }) {
   const pathname = usePathname();
   const hasActive = group.items.some((item) => isActive(pathname, item.href));
   const [open, setOpen] = useState(true);
@@ -32,6 +33,7 @@ function Group({ group }: { group: NavGroup }) {
             <Link
               key={item.module}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex h-10 items-center gap-2.5 rounded-pp px-2.5 text-[14px]",
                 active
@@ -66,6 +68,7 @@ function Group({ group }: { group: NavGroup }) {
               <Link
                 key={item.module}
                 href={item.href}
+                onClick={onNavigate}
                 className={cn(
                   "flex h-10 items-center gap-2.5 rounded-pp px-2.5 text-[14px]",
                   active
@@ -84,12 +87,38 @@ function Group({ group }: { group: NavGroup }) {
   );
 }
 
-export function Sidebar({ groups }: { groups: NavGroup[] }) {
+export function Sidebar({
+  groups,
+  mobileOpen,
+  onClose,
+}: {
+  groups: NavGroup[];
+  mobileOpen: boolean;
+  onClose: () => void;
+}) {
   return (
-    <aside className="hidden w-[220px] shrink-0 border-r border-pp-border bg-pp-surface px-2 py-3 md:block">
-      {groups.map((group) => (
-        <Group key={group.id} group={group} />
-      ))}
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-pp-border bg-pp-surface shadow-[12px_0_40px_rgba(47,47,47,0.12)] transition-transform duration-200 ease-out lg:static lg:z-0 lg:h-auto lg:w-[220px] lg:translate-x-0 lg:pointer-events-auto lg:shadow-none",
+        mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none lg:pointer-events-auto",
+      )}
+    >
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-pp-border px-3 lg:hidden">
+        <BrandMark />
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-pp p-1.5 text-pp-muted hover:bg-pp-bg hover:text-pp-text"
+          aria-label="Close navigation"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
+        {groups.map((group) => (
+          <Group key={group.id} group={group} onNavigate={onClose} />
+        ))}
+      </nav>
     </aside>
   );
 }

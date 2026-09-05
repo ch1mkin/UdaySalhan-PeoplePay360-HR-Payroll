@@ -11,3 +11,11 @@ export type UserAccountStatus = "invited" | "pending_approval" | "active" | "sus
 export type PayrunStatus = "draft" | "computed" | "validated" | "paid" | "cancelled";
 
 export type SalaryCalcMethod = "fixed" | "percentage" | "formula";
+
+export type AttendanceStatus =
+  | "present"
+  | "late"
+  | "early_departure"
+  | "absent"
+  | "overtime"
+  | "missing_checkout";
